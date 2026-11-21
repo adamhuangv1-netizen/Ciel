@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ciel emblem mockups</title>
+<style>
+  :root {
+    --core: #d8f3ff; --ring: #5cc8ff; --glow: #7fdcff; --alert: #ffb347;
+    --bg: #05090f; --panel: #0b1422; --text: #dceefb; --muted: #8fb0c8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 'Segoe UI', system-ui, sans-serif; }
+  header { padding: 24px 24px 8px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.04em; }
+  p { margin: 4px 0; color: var(--muted); }
+  .states { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px; max-width: 1200px; margin: 0 auto; }
+  .states button { background: transparent; color: var(--text); border: 1px solid #2a4a66; border-radius: 4px; padding: 6px 14px; font: inherit; cursor: pointer; }
+  .states button[aria-pressed='true'] { border-color: var(--ring); background: #0f2236; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; padding: 16px 24px 24px; max-width: 1200px; margin: 0 auto; }
+  .variant { background: var(--panel); border: 1px solid #1a2c40; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .variant h2 { font-size: 16px; margin: 0; letter-spacing: 0.08em; }
+  .variant .big { width: 260px; height: 260px; }
+  .variant .small-row { display: flex; gap: 16px; align-items: center; }
+  .variant .small { width: 128px; height: 128px; background: #2b2f36; border-radius: 6px; padding: 8px; }
+  .variant .tiny { width: 32px; height: 32px; }
+  svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* shared state behaviour, applied via data-state on <body> */
+  .emblem { --stroke: var(--ring); --lvl: 0; filter: drop-shadow(0 0 8px var(--glow)); transition: filter 200ms; }
+  .ring, .core { transform-origin: 0 0; transform-box: view-box; }
+  .spin-slow { animation: spin 60s linear infinite; }
+  .spin-mid { animation: spin 40s linear infinite reverse; }
+  .breathe { animation: breathe 4s ease-in-out infinite; }
+  [data-state='listening'] .emblem { filter: drop-shadow(0 0 14px var(--glow)); }
+  [data-state='listening'] .ring { scale: 0.92; transition: scale 300ms; }
+  [data-state='listening'] .breathe { animation-duration: 1.6s; }
+  [data-state='thinking'] .spin-slow { animation-duration: 3s; }
+  [data-state='thinking'] .spin-mid { animation-duration: 4s; }
+  [data-state='speaking'] .breathe { animation: speak 0.42s ease-in-out infinite alternate; }
+  [data-state='speaking'] .emblem { filter: drop-shadow(0 0 18px var(--glow)); }
+  [data-state='alert'] .emblem { --stroke: var(--alert); filter: drop-shadow(0 0 14px var(--alert)); }
+  [data-state='alert'] .breathe { animation-duration: 1s; }
+  .stroke { fill: none; stroke: var(--stroke); }
+  .core-fill { fill: var(--core); }
+  .core-line { stroke: var(--core); fill: none; }
+  .facet { fill: color-mix(in srgb, var(--core) 30%, transparent); stroke: var(--core); stroke-width: 2; }
+  @keyframes spin { to { rotate: 360deg; } }
+  @keyframes breathe { 0%, 100% { scale: 0.96; opacity: 0.85; } 50% { scale: 1.04; opacity: 1; } }
+  @keyframes speak { from { scale: 0.98; } to { scale: 1.18; } }
+  @media (prefers-reduced-motion: reduce) { .spin-slow, .spin-mid, .breathe { animation: none !important; } }
+  footer { max-width: 1200px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body data-state="idle">
+<header>
+  <h1>Ciel emblem mockups</h1>
+  <p>Three original designs, shown large, at 128 px on dark grey, and at tray size. Pick one; its colours go into the persona pack.</p>
+</header>
+<div class="states" role="group" aria-label="Emblem state">
+  <button aria-pressed="true" data-s="idle">Idle</button>
+  <button aria-pressed="false" data-s="listening">Listening</button>
+  <button aria-pressed="false" data-s="thinking">Thinking</button>
+  <button aria-pressed="false" data-s="speaking">Speaking</button>
+  <button aria-pressed="false" data-s="alert">Alert (request)</button>
+</div>
+<main>
+  <section class="variant" id="A">
+    <h2>A · FACET</h2>
+    <p>Segmented rings around a faceted hexagon. The one running in the app now.</p>
+    <template data-svg>
+      <svg viewBox="-100 -100 200 200" class="emblem">
+        <g class="ring spin-slow"><circle class="stroke" r="88" pathLength="120" stroke-dasharray="7 3" stroke-width="3"/></g>
+        <g class="ring spin-mid"><circle class="stroke" r="70" pathLength="60" stroke-dasharray="12 3 2 3" stroke-width="3"/></g>
+        <g class="ring"><circle class="stroke" r="52" pathLength="36" stroke-dasharray="1 2" stroke-width="2" opacity="0.5"/></g>
+        <g class="core breathe">
+          <polygon class="facet" points="25.98,-15 25.98,15 0,30 -25.98,15 -25.98,-15 0,-30"/>
+          <g class="core-line" stroke-width="1" opacity="0.6">
+            <line x1="12.12" y1="-7" x2="25.98" y2="-15"/><line x1="12.12" y1="7" x2="25.98" y2="15"/>
+            <line x1="0" y1="14" x2="0" y2="30"/><line x1="-12.12" y1="7" x2="-25.98" y2="15"/>
+            <line x1="-12.12" y1="-7" x2="-25.98" y2="-15"/><line x1="0" y1="-14" x2="0" y2="-30"/>
+          </g>
+          <polygon class="core-fill" points="12.12,-7 12.12,7 0,14 -12.12,7 -12.12,-7 0,-14"/>
+        </g>
+      </svg>
+    </template>
+  </section>
+
+  <section class="variant" id="B">
+    <h2>B · ORBIT</h2>
+    <p>Two tilted orbits, like a gyroscope, around an eight-point compass star.</p>
+    <template data-svg>
+      <svg viewBox="-100 -100 200 200" class="emblem">
+        <g class="ring spin-slow">
+          <ellipse class="stroke" rx="88" ry="34" stroke-width="2.5" transform="rotate(-30)"/>
+          <circle class="core-fill" cx="88" cy="0" r="4" transform="rotate(-30)"/>
+        </g>
+        <g class="ring spin-mid">
+          <ellipse class="stroke" rx="88" ry="34" stroke-width="2.5" transform="rotate(30)"/>
+          <circle class="core-fill" cx="-88" cy="0" r="4" transform="rotate(30)"/>
+        </g>
+        <g class="ring"><circle class="stroke" r="60" stroke-width="1.5" opacity="0.45" pathLength="48" stroke-dasharray="2 2"/></g>
+        <g class="core breathe">
+          <polygon class="facet" points="0,-40 7,-7 40,0 7,7 0,40 -7,7 -40,0 -7,-7"/>
+          <polygon class="core-fill" opacity="0.85" points="0,-22 4,-4 22,0 4,4 0,22 -4,4 -22,0 -4,-4" transform="rotate(45)"/>
+        </g>
+      </svg>
+    </template>
+  </section>
+
+  <section class="variant" id="C">
+    <h2>C · LATTICE</h2>
+    <p>A dial of 36 ticks around stacked, rotated squares with a prism at the centre.</p>
+    <template data-svg>
+      <svg viewBox="-100 -100 200 200" class="emblem">
+        <g class="ring spin-slow" id="ticks"></g>
+        <g class="ring spin-mid">
+          <rect class="stroke" x="-56" y="-56" width="112" height="112" rx="10" stroke-width="2.5" transform="rotate(45)"/>
+        </g>
+        <g class="ring">
+          <rect class="stroke" x="-44" y="-44" width="88" height="88" rx="8" stroke-width="2" opacity="0.6"/>
+        </g>
+        <g class="core breathe">
+          <polygon class="facet" points="0,-28 24,0 0,28 -24,0"/>
+          <line class="core-line" x1="-24" y1="0" x2="24" y2="0" stroke-width="1" opacity="0.6"/>
+          <polygon class="core-fill" points="0,-28 24,0 0,0"/>
+        </g>
+      </svg>
+    </template>
+  </section>
+</main>
+<footer>Original designs for this project. Colours: core #d8f3ff, ring #5cc8ff, glow #7fdcff, alert #ffb347.</footer>
+<script>
+  for (const v of document.querySelectorAll('.variant')) {
+    const tpl = v.querySelector('template[data-svg]').innerHTML
+    const big = document.createElement('div'); big.className = 'big'; big.innerHTML = tpl
+    const row = document.createElement('div'); row.className = 'small-row'
+    const small = document.createElement('div'); small.className = 'small'; small.innerHTML = tpl
+    const tiny = document.createElement('div'); tiny.className = 'tiny'; tiny.innerHTML = tpl
+    row.append(small, tiny)
+    v.insertBefore(big, v.querySelector('p'))
+    v.append(row)
+  }
+  for (const g of document.querySelectorAll('#C .big #ticks, #C .small #ticks, #C .tiny #ticks')) {
+    for (let i = 0; i < 36; i++) {
+      const a = (i * 10 * Math.PI) / 180, r1 = i % 3 === 0 ? 78 : 83, r2 = 90
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+      l.setAttribute('x1', (Math.cos(a) * r1).toFixed(2)); l.setAttribute('y1', (Math.sin(a) * r1).toFixed(2))
+      l.setAttribute('x2', (Math.cos(a) * r2).toFixed(2)); l.setAttribute('y2', (Math.sin(a) * r2).toFixed(2))
+      l.setAttribute('class', 'stroke'); l.setAttribute('stroke-width', i % 3 === 0 ? '3' : '1.5')
+      g.append(l)
+    }
+  }
+  for (const b of document.querySelectorAll('.states button')) {
+    b.addEventListener('click', () => {
+      document.body.dataset.state = b.dataset.s
+      for (const o of document.querySelectorAll('.states button')) o.setAttribute('aria-pressed', String(o === b))
+    })
+  }
+</script>
+</body>
+</html>
