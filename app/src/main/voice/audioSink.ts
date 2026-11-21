@@ -15,7 +15,10 @@ export interface OverlayAudioSink extends AudioSink {
  * Sends audio to the overlay over IPC and turns its "done" replies into promises. If the overlay
  * never answers (reloaded, crashed), done still resolves once the audio should have finished.
  */
-export function createAudioSink(opts: { send: (channel: string, payload: unknown) => void; sampleRate: number }): OverlayAudioSink {
+export function createAudioSink(opts: {
+  send: (channel: string, payload: unknown) => void
+  sampleRate: number
+}): OverlayAudioSink {
   const bytesSent = new Map<string, number>()
   const waiters = new Map<string, () => void>()
   const finished = new Set<string>()

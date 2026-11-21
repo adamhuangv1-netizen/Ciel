@@ -93,6 +93,19 @@ describe('SpeechBudget', () => {
     expect(b.decide(10, 'request')).toBe('speak')
   })
 
+  it('asks for a fresh account reading before the first one, after the monthly reset, and every 6 hours', () => {
+    const b = budget()
+    expect(b.syncDue()).toBe(true)
+    b.sync({ ...USAGE, nextCharacterCountResetUnix: Math.floor(clock / 1000) + 3600 })
+    expect(b.syncDue()).toBe(false)
+    clock += 3601_000 // past the reset
+    expect(b.syncDue()).toBe(true)
+    b.sync(USAGE)
+    expect(b.syncDue()).toBe(false)
+    clock += 6 * 3600_000
+    expect(b.syncDue()).toBe(true)
+  })
+
   it("keeps the day's usage across restarts", async () => {
     const b = budget()
     b.sync(USAGE)

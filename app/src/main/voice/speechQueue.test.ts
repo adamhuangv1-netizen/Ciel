@@ -31,7 +31,12 @@ function fakeTts(fail?: (text: string) => Error | undefined): { tts: Tts; texts:
 }
 
 /** A sink whose playback finishes at once (auto) or when the test calls finish(). */
-function fakeSink(auto = true): { sink: AudioSink; calls: string[]; finish(): void; pending(): number } {
+function fakeSink(auto = true): {
+  sink: AudioSink
+  calls: string[]
+  finish(): void
+  pending(): number
+} {
   const calls: string[] = []
   const waiters = new Map<string, () => void>()
   const sink: AudioSink = {
@@ -79,7 +84,9 @@ describe('SpeechQueue', () => {
     const { tts, texts } = fakeTts()
     const q = makeQueue({ tts })
     const results = await Promise.all(
-      ['One.', 'Two.', 'Three.'].map((text, i) => q.enqueue({ text, priority: 'notice', cardId: `c${i}` }))
+      ['One.', 'Two.', 'Three.'].map((text, i) =>
+        q.enqueue({ text, priority: 'notice', cardId: `c${i}` })
+      )
     )
     expect(results).toEqual(['spoken', 'spoken', 'spoken'])
     expect(texts).toEqual(['One.', 'Two.', 'Three.'])
@@ -98,6 +105,34 @@ describe('SpeechQueue', () => {
     await vi.waitFor(() => expect(s.pending()).toBe(2))
     expect(texts).toEqual(['Your download finished.', 'May I tidy Downloads?'])
     s.finish()
+    expect(await request).toBe('spoken')
+  })
+
+  it('lets a request cut in while a notice is still waiting on ElevenLabs, cancelling that request', async () => {
+    let noticeSignal: AbortSignal | undefined
+    const texts: string[] = []
+    const tts: Tts = {
+      stream(text, signal) {
+        texts.push(text)
+        if (text.startsWith('Slow')) {
+          noticeSignal = signal
+          return new Promise((_, reject) =>
+            signal?.addEventListener('abort', () => reject(new Error('aborted')))
+          )
+        }
+        return Promise.resolve(
+          (async function* () {
+            yield new Uint8Array([1, 2])
+          })()
+        )
+      }
+    }
+    const q = makeQueue({ tts })
+    const notice = q.enqueue({ text: 'Slow notice.', priority: 'notice', cardId: 'n' })
+    await vi.waitFor(() => expect(texts).toEqual(['Slow notice.']))
+    const request = q.enqueue({ text: 'May I?', priority: 'request', cardId: 'r' })
+    expect(await notice).toBe('interrupted')
+    expect(noticeSignal?.aborted).toBe(true)
     expect(await request).toBe('spoken')
   })
 
@@ -160,6 +195,69 @@ describe('SpeechQueue', () => {
     expect(mark).not.toHaveBeenCalled()
   })
 
+  it('says once that the voice is unreachable after repeated failures, and again only after it recovers', async () => {
+    let failing = true
+    const { tts } = fakeTts(() => (failing ? new TtsError('network', 'offline') : undefined))
+    const cards: Card[] = []
+    const q = makeQueue({ tts, onVoiceUnavailable: (c) => cards.push(c) })
+    for (let i = 0; i < 5; i++)
+      await q.enqueue({ text: `Answer ${i}.`, priority: 'answer', cardId: `a${i}` })
+    expect(cards).toHaveLength(1)
+    expect(cards[0]!.body).toContain('cards only')
+    failing = false
+    expect(await q.enqueue({ text: 'Back again.', priority: 'answer', cardId: 'b' })).toBe('spoken')
+    failing = true
+    for (let i = 0; i < 3; i++)
+      await q.enqueue({ text: `Later ${i}.`, priority: 'answer', cardId: `l${i}` })
+    expect(cards).toHaveLength(2)
+  })
+
+  it('reads the account usage when the budget has none yet, so the first lines can speak', async () => {
+    const fresh = new SpeechBudget({ statePath: path.join(dir, 'fresh-sync.json') })
+    const { tts } = fakeTts()
+    const q = makeQueue({
+      tts,
+      budget: fresh,
+      refreshUsage: async () =>
+        fresh.sync({
+          characterLimit: 3_000_000,
+          characterCount: 0,
+          nextCharacterCountResetUnix: Math.floor(Date.now() / 1000) + 86_400
+        })
+    })
+    expect(await q.enqueue({ text: 'Hello.', priority: 'answer', cardId: 'a' })).toBe('spoken')
+  })
+
+  it('gets her voice back once the account resets, without a restart', async () => {
+    let t = Date.now()
+    const b = new SpeechBudget({ statePath: path.join(dir, 'reset.json'), now: () => t })
+    const resetAt = Math.floor(t / 1000) + 3600
+    b.sync({
+      characterLimit: 3_000_000,
+      characterCount: 3_000_000 - 5,
+      nextCharacterCountResetUnix: resetAt
+    })
+    const { tts } = fakeTts()
+    const q = makeQueue({
+      tts,
+      budget: b,
+      now: () => t,
+      refreshUsage: async () =>
+        b.sync({
+          characterLimit: 3_000_000,
+          characterCount: 0,
+          nextCharacterCountResetUnix: resetAt + 30 * 86_400
+        })
+    })
+    expect(await q.enqueue({ text: 'Hello there.', priority: 'answer', cardId: 'a' })).toBe(
+      'skipped'
+    )
+    t += 2 * 3600_000
+    expect(await q.enqueue({ text: 'Hello again.', priority: 'answer', cardId: 'b' })).toBe(
+      'spoken'
+    )
+  })
+
   it('stops the audio if the stream fails part-way', async () => {
     const s = fakeSink()
     const tts: Tts = {
@@ -202,7 +300,12 @@ describe('SpeechQueue', () => {
     await cache.put('Notice. Download complete.', new Uint8Array([9, 9, 9, 9]))
     const s = fakeSink()
     const q = makeQueue({ tts, budget, cache, sink: s.sink })
-    const r = await q.enqueue({ text: 'Notice. Download complete.', priority: 'notice', cardId: 'd', template: true })
+    const r = await q.enqueue({
+      text: 'Notice. Download complete.',
+      priority: 'notice',
+      cardId: 'd',
+      template: true
+    })
     expect(r).toBe('spoken')
     expect(texts).toEqual([])
     expect(record).not.toHaveBeenCalled()
@@ -212,7 +315,12 @@ describe('SpeechQueue', () => {
   it('caches a template phrase the first time it is spoken', async () => {
     const cache = new TemplateCache({ dir: path.join(dir, 'tts'), voiceId: 'v1', modelId: 'm1' })
     const q = makeQueue({ cache })
-    await q.enqueue({ text: 'Notice. Process finished.', priority: 'notice', cardId: 'p', template: true })
+    await q.enqueue({
+      text: 'Notice. Process finished.',
+      priority: 'notice',
+      cardId: 'p',
+      template: true
+    })
     expect(await cache.get('Notice. Process finished.')).toEqual(new Uint8Array([1, 2, 3, 4]))
   })
 

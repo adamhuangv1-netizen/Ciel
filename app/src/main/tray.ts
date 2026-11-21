@@ -83,7 +83,10 @@ export function createTray(h: TrayHandlers): TrayHandle {
       { label: 'Show on', submenu: displayItems },
       { label: 'Layout', submenu: layoutItems },
       ...(h.onTestSpeak
-        ? [{ type: 'separator' as const }, { label: 'Say a test line', click: () => h.onTestSpeak?.() }]
+        ? [
+            { type: 'separator' as const },
+            { label: 'Say a test line', click: () => h.onTestSpeak?.() }
+          ]
         : []),
       { type: 'separator' },
       { label: 'Quit Ciel', click: () => h.onQuit() }

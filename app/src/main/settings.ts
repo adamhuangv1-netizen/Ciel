@@ -14,7 +14,9 @@ export const DEFAULT_SETTINGS: Settings = { displayId: null, layout: 'corner' }
 function readRaw(file: string): Record<string, unknown> {
   try {
     const raw: unknown = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+    return raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {}
   } catch {
     return {}
   }
@@ -23,8 +25,11 @@ function readRaw(file: string): Record<string, unknown> {
 export function loadSettings(file: string): Settings {
   const raw = readRaw(file)
   const displayId =
-    typeof raw.displayId === 'number' && Number.isInteger(raw.displayId) ? raw.displayId : DEFAULT_SETTINGS.displayId
-  const layout = raw.layout === 'corner' || raw.layout === 'stage' ? raw.layout : DEFAULT_SETTINGS.layout
+    typeof raw.displayId === 'number' && Number.isInteger(raw.displayId)
+      ? raw.displayId
+      : DEFAULT_SETTINGS.displayId
+  const layout =
+    raw.layout === 'corner' || raw.layout === 'stage' ? raw.layout : DEFAULT_SETTINGS.layout
   return { displayId, layout }
 }
 

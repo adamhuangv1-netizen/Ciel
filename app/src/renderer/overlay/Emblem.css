@@ -3,7 +3,9 @@
   height: var(--emblem-size, 200px);
   --stroke: var(--ring);
   /* glow scales with the emblem so it reads the same in corner and stage layouts */
-  filter: drop-shadow(0 0 calc(var(--emblem-size, 200px) * (0.04 + 0.12 * var(--level))) var(--glow));
+  filter: drop-shadow(
+    0 0 calc(var(--emblem-size, 200px) * (0.04 + 0.12 * var(--level))) var(--glow)
+  );
   transition: filter 120ms linear;
 }
 

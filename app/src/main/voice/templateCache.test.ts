@@ -17,10 +17,15 @@ describe('TemplateCache', () => {
   })
 
   it('misses for a different voice, model or phrase', async () => {
-    await new TemplateCache({ dir, voiceId: 'v1', modelId: 'm1' }).put('Hello.', new Uint8Array([7]))
+    await new TemplateCache({ dir, voiceId: 'v1', modelId: 'm1' }).put(
+      'Hello.',
+      new Uint8Array([7])
+    )
     expect(await new TemplateCache({ dir, voiceId: 'v2', modelId: 'm1' }).get('Hello.')).toBeNull()
     expect(await new TemplateCache({ dir, voiceId: 'v1', modelId: 'm2' }).get('Hello.')).toBeNull()
-    expect(await new TemplateCache({ dir, voiceId: 'v1', modelId: 'm1' }).get('Goodbye.')).toBeNull()
+    expect(
+      await new TemplateCache({ dir, voiceId: 'v1', modelId: 'm1' }).get('Goodbye.')
+    ).toBeNull()
   })
 
   it('lists the fixed notice phrases', () => {

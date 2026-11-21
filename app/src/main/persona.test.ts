@@ -53,9 +53,9 @@ describe('loadPersona', () => {
   })
 
   it('rejects an emblem colour that is not a hex colour', async () => {
-    const err = await loadPersona(pack({ emblem: { ...EMBLEM, glow: 'red; background:url(x)' } })).catch(
-      (e: unknown) => e
-    )
+    const err = await loadPersona(
+      pack({ emblem: { ...EMBLEM, glow: 'red; background:url(x)' } })
+    ).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(PersonaError)
     expect((err as Error).message).toContain('emblem.json')
     expect((err as Error).message).toContain('glow')
@@ -80,7 +80,12 @@ describe('loadPersona portrait', () => {
     fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
     const eyes = { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
     fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes }))
-    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes, lids: null, mouth: null })
+    expect((await loadPersona(dir)).portrait).toEqual({
+      path: path.join(dir, 'ciel.png'),
+      eyes,
+      lids: null,
+      mouth: null
+    })
   })
 
   it('reads the optional eyelid and mouth boxes used for blinking and talking', async () => {
@@ -93,14 +98,24 @@ describe('loadPersona portrait', () => {
     ]
     const mouth = { x: 0.47, y: 0.4, w: 0.06, h: 0.02 }
     fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes, lids, mouth }))
-    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes, lids, mouth })
+    expect((await loadPersona(dir)).portrait).toEqual({
+      path: path.join(dir, 'ciel.png'),
+      eyes,
+      lids,
+      mouth
+    })
   })
 
   it('accepts a webp or jpg picture and uses a default eyes box without portrait.json', async () => {
     const dir = pack({})
     fs.writeFileSync(path.join(dir, 'ciel.webp'), 'webp')
     const p = await loadPersona(dir)
-    expect(p.portrait).toEqual({ path: path.join(dir, 'ciel.webp'), eyes: DEFAULT_EYES_BOX, lids: null, mouth: null })
+    expect(p.portrait).toEqual({
+      path: path.join(dir, 'ciel.webp'),
+      eyes: DEFAULT_EYES_BOX,
+      lids: null,
+      mouth: null
+    })
 
     const jpgDir = pack({})
     fs.writeFileSync(path.join(jpgDir, 'ciel.jpg'), 'jpg')
@@ -114,7 +129,10 @@ describe('loadPersona portrait', () => {
   it('rejects an eyes box that runs off the picture', async () => {
     const dir = pack({})
     fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
-    fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes: { x: 0.9, y: 0.2, w: 0.3, h: 0.1 } }))
+    fs.writeFileSync(
+      path.join(dir, 'portrait.json'),
+      JSON.stringify({ eyes: { x: 0.9, y: 0.2, w: 0.3, h: 0.1 } })
+    )
     const err = await loadPersona(dir).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(PersonaError)
     expect((err as Error).message).toContain('portrait.json')

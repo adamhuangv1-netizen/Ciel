@@ -21,6 +21,8 @@ interface PersistedState {
 }
 
 const LOW_FRACTION = 0.2
+/** Re-read the account at least this often, since its usage moves with use elsewhere too. */
+const RESYNC_MS = 6 * 60 * 60 * 1000
 const DAYS_PER_MONTH = 30
 
 function dayKey(ms: number): string {
@@ -36,6 +38,7 @@ export class SpeechBudget {
   private state: PersistedState
   private account: AccountUsage | null = null
   private usedSinceSync = 0
+  private syncedAt: number | null = null
   private authFailed = false
 
   constructor(opts: { statePath: string; now?: () => number }) {
@@ -46,9 +49,17 @@ export class SpeechBudget {
 
   sync(u: AccountUsage): void {
     this.account = u
+    this.syncedAt = this.now()
     this.usedSinceSync = 0
     this.state.limit = u.characterLimit
     this.persist()
+  }
+
+  /** True before the first account reading, once the monthly reset has passed, and every 6 hours. */
+  syncDue(): boolean {
+    if (!this.account || this.syncedAt === null) return true
+    if (this.now() / 1000 >= this.account.nextCharacterCountResetUnix) return true
+    return this.now() - this.syncedAt >= RESYNC_MS
   }
 
   dailyAllowance(): number {

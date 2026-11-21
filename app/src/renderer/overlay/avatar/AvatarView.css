@@ -25,7 +25,7 @@
 
 /* Full bust: no frame, she sits directly over the desktop. */
 .avatar--full {
-  width: var(--avatar-width, 300px);
-  height: var(--avatar-height, 360px);
+  height: min(var(--avatar-height, 360px), 40vh);
+  aspect-ratio: 5 / 6;
   border-radius: 0;
 }

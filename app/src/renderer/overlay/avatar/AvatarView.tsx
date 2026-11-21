@@ -35,7 +35,13 @@ export function AvatarView({ url, state, level, framing, onError }: AvatarViewPr
   useEffect(() => sceneRef.current?.setFraming(framing), [framing])
 
   return (
-    <div className={`avatar avatar--${framing}`} data-testid="avatar" data-framing={framing} role="img" aria-label={`Ciel is ${state}`}>
+    <div
+      className={`avatar avatar--${framing}`}
+      data-testid="avatar"
+      data-framing={framing}
+      role="img"
+      aria-label={`Ciel is ${state}`}
+    >
       <canvas ref={canvasRef} className="avatar__canvas" />
     </div>
   )

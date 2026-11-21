@@ -20,8 +20,12 @@ describe('resolveAsset', () => {
       path: PORTRAIT,
       contentType: 'image/png'
     })
-    expect(resolveAsset(PORTRAIT_URL, { avatar: null, portrait: 'x\\ciel.webp' })?.contentType).toBe('image/webp')
-    expect(resolveAsset(PORTRAIT_URL, { avatar: null, portrait: 'x\\ciel.jpg' })?.contentType).toBe('image/jpeg')
+    expect(
+      resolveAsset(PORTRAIT_URL, { avatar: null, portrait: 'x\\ciel.webp' })?.contentType
+    ).toBe('image/webp')
+    expect(resolveAsset(PORTRAIT_URL, { avatar: null, portrait: 'x\\ciel.jpg' })?.contentType).toBe(
+      'image/jpeg'
+    )
   })
 
   it('serves nothing the persona does not have', () => {
@@ -46,7 +50,12 @@ describe('resolveAsset', () => {
 describe('avatarSource', () => {
   it('prefers the portrait picture over a VRM model', () => {
     const mouth = { x: 0.47, y: 0.4, w: 0.06, h: 0.02 }
-    expect(avatarSource({ avatarPath: AVATAR, portrait: { path: PORTRAIT, eyes: EYES, lids: null, mouth } })).toEqual({
+    expect(
+      avatarSource({
+        avatarPath: AVATAR,
+        portrait: { path: PORTRAIT, eyes: EYES, lids: null, mouth }
+      })
+    ).toEqual({
       kind: 'portrait',
       url: PORTRAIT_URL,
       eyes: EYES,
@@ -56,7 +65,10 @@ describe('avatarSource', () => {
   })
 
   it('uses the VRM model when there is no picture', () => {
-    expect(avatarSource({ avatarPath: AVATAR, portrait: null })).toEqual({ kind: 'vrm', url: AVATAR_URL })
+    expect(avatarSource({ avatarPath: AVATAR, portrait: null })).toEqual({
+      kind: 'vrm',
+      url: AVATAR_URL
+    })
   })
 
   it('has nothing to show without either, so the emblem stays', () => {

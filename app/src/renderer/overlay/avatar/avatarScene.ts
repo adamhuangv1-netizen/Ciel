@@ -2,7 +2,14 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
 import type { EmblemState } from '../../../shared/types'
-import { cameraFor, createBlinker, expressionWeights, gazeOffset, type Framing, type Vec3 } from './avatarLogic'
+import {
+  cameraFor,
+  createBlinker,
+  expressionWeights,
+  gazeOffset,
+  type Framing,
+  type Vec3
+} from './avatarLogic'
 
 export interface AvatarScene {
   /** Resolves once the model is loaded; rejects if it can't be. */
@@ -109,7 +116,11 @@ export function createAvatarScene(canvas: HTMLCanvasElement, url: string): Avata
       // Idle life: slow breathing and a gentle head sway.
       const h = vrm.humanoid
       h.getNormalizedBoneNode('chest')?.rotation.set(Math.sin(t * 1.4) * 0.015, 0, 0)
-      h.getNormalizedBoneNode('neck')?.rotation.set(0, Math.sin(t * 0.37) * 0.05, Math.sin(t * 0.23) * 0.02)
+      h.getNormalizedBoneNode('neck')?.rotation.set(
+        0,
+        Math.sin(t * 0.37) * 0.05,
+        Math.sin(t * 0.23) * 0.02
+      )
       vrm.update(dt)
     }
     renderer.render(scene, camera)

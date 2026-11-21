@@ -1,4 +1,8 @@
-import { ElevenLabsClient, ElevenLabsError, ElevenLabsTimeoutError } from '@elevenlabs/elevenlabs-js'
+import {
+  ElevenLabsClient,
+  ElevenLabsError,
+  ElevenLabsTimeoutError
+} from '@elevenlabs/elevenlabs-js'
 import type { VoiceSettings } from '../persona'
 import type { AccountUsage } from './speechBudget'
 
@@ -15,7 +19,42 @@ export class TtsError extends Error {
 }
 
 export interface Tts {
-  stream(text: string): Promise<AsyncIterable<Uint8Array>>
+  /** Aborting `signal` cancels the request and the download. */
+  stream(text: string, signal?: AbortSignal): Promise<AsyncIterable<Uint8Array>>
+}
+
+/** Give up on ElevenLabs after this long with no response headers. */
+const HEADERS_TIMEOUT_S = 10
+/** ...or this long between audio chunks once it has started. */
+export const STALL_MS = 8_000
+
+/**
+ * Fails the stream with a network error if no chunk arrives within `ms`. The SDK's own timeout
+ * stops at the response headers, so a body that stalls would otherwise hang the speech queue.
+ */
+export async function* guardStalls(
+  source: AsyncIterable<Uint8Array>,
+  ms: number
+): AsyncIterable<Uint8Array> {
+  const it = source[Symbol.asyncIterator]()
+  try {
+    for (;;) {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const quiet = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new TtsError('network', `no audio for ${ms} ms`)), ms)
+      })
+      let r: IteratorResult<Uint8Array>
+      try {
+        r = await Promise.race([it.next(), quiet])
+      } finally {
+        clearTimeout(timer)
+      }
+      if (r.done) return
+      yield r.value
+    }
+  } finally {
+    void Promise.resolve(it.return?.()).catch(() => {})
+  }
 }
 
 function detailOf(body: unknown): Record<string, unknown> {
@@ -34,9 +73,19 @@ export function classifyTtsError(e: unknown): TtsErrorKind {
     if (e.statusCode === undefined) return 'network'
     const d = detailOf(e.body)
     const tags = [d['status'], d['code'], d['type']]
-    if (e.statusCode === 402 || tags.some((t) => t === 'quota_exceeded' || t === 'insufficient_credits' || t === 'payment_required'))
+    if (
+      e.statusCode === 402 ||
+      tags.some(
+        (t) => t === 'quota_exceeded' || t === 'insufficient_credits' || t === 'payment_required'
+      )
+    )
       return 'quota'
-    if (tags.some((t) => t === 'invalid_api_key' || t === 'authentication_error' || t === 'missing_permissions'))
+    if (
+      tags.some(
+        (t) =>
+          t === 'invalid_api_key' || t === 'authentication_error' || t === 'missing_permissions'
+      )
+    )
       return 'auth'
     if (e.statusCode === 429 || d['type'] === 'rate_limit_error') return 'rate'
     return 'other'
@@ -70,15 +119,23 @@ async function* mapped(stream: ReadableStream<Uint8Array>): AsyncIterable<Uint8A
 export function createTts(apiKey: string, v: VoiceSettings): Tts {
   const client = new ElevenLabsClient({ apiKey })
   return {
-    async stream(text) {
+    async stream(text, signal) {
       try {
-        const stream = await client.textToSpeech.stream(v.voiceId, {
-          text,
-          modelId: v.modelId,
-          outputFormat: v.outputFormat,
-          voiceSettings: { stability: v.stability, similarityBoost: v.similarityBoost, style: v.style }
-        })
-        return mapped(stream)
+        const stream = await client.textToSpeech.stream(
+          v.voiceId,
+          {
+            text,
+            modelId: v.modelId,
+            outputFormat: v.outputFormat,
+            voiceSettings: {
+              stability: v.stability,
+              similarityBoost: v.similarityBoost,
+              style: v.style
+            }
+          },
+          { abortSignal: signal, timeoutInSeconds: HEADERS_TIMEOUT_S, maxRetries: 1 }
+        )
+        return guardStalls(mapped(stream), STALL_MS)
       } catch (e) {
         throw toTtsError(e)
       }
@@ -94,7 +151,8 @@ export async function fetchAccountUsage(apiKey: string): Promise<AccountUsage> {
       characterLimit: s.characterLimit,
       characterCount: s.characterCount,
       // Unknown reset time: check again in a day.
-      nextCharacterCountResetUnix: s.nextCharacterCountResetUnix ?? Math.floor(Date.now() / 1000) + 86_400
+      nextCharacterCountResetUnix:
+        s.nextCharacterCountResetUnix ?? Math.floor(Date.now() / 1000) + 86_400
     }
   } catch (e) {
     throw toTtsError(e)

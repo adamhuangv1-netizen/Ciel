@@ -5,7 +5,11 @@ import { createAudioSink } from './audioSink'
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
-function setup(): { sent: [string, unknown][]; speaking: boolean[]; sink: ReturnType<typeof createAudioSink> } {
+function setup(): {
+  sent: [string, unknown][]
+  speaking: boolean[]
+  sink: ReturnType<typeof createAudioSink>
+} {
   const sent: [string, unknown][] = []
   const speaking: boolean[] = []
   const sink = createAudioSink({ send: (c, p) => sent.push([c, p]), sampleRate: 24_000 })

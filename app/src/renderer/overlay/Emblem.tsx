@@ -34,7 +34,14 @@ export function Emblem({ state, level, theme = DEFAULT_THEME }: EmblemProps): JS
   const inner = hexPoints(14)
 
   return (
-    <div className="emblem" data-testid="emblem" data-state={state} style={style} role="img" aria-label={`Ciel is ${state}`}>
+    <div
+      className="emblem"
+      data-testid="emblem"
+      data-state={state}
+      style={style}
+      role="img"
+      aria-label={`Ciel is ${state}`}
+    >
       <svg viewBox="-100 -100 200 200" width="100%" height="100%">
         <g className="emblem__ring emblem__ring--outer">
           <circle r="88" pathLength="120" strokeDasharray="7 3" />
@@ -48,7 +55,14 @@ export function Emblem({ state, level, theme = DEFAULT_THEME }: EmblemProps): JS
         <g className="emblem__core">
           <polygon className="emblem__facet" points={outer.map((p) => p.join(',')).join(' ')} />
           {outer.map(([x, y], i) => (
-            <line key={i} className="emblem__edge" x1={inner[i][0]} y1={inner[i][1]} x2={x} y2={y} />
+            <line
+              key={i}
+              className="emblem__edge"
+              x1={inner[i][0]}
+              y1={inner[i][1]}
+              x2={x}
+              y2={y}
+            />
           ))}
           <polygon className="emblem__heart" points={inner.map((p) => p.join(',')).join(' ')} />
         </g>

@@ -29,7 +29,10 @@ let overlay: OverlayHandle | null = null
 
 // Must happen before 'ready'. fetch support lets three.js's loader read the avatar.
 protocol.registerSchemesAsPrivileged([
-  { scheme: ASSET_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
+  {
+    scheme: ASSET_SCHEME,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+  }
 ])
 
 /** Dev: the repo's personas/ciel. Packaged: %APPDATA%/Ciel/persona. CIEL_PERSONA_DIR overrides both. */
@@ -70,7 +73,11 @@ function createSpeech(
   return new SpeechQueue({
     tts: createTts(apiKey, voice),
     budget,
-    cache: new TemplateCache({ dir: paths.ttsCache, voiceId: voice.voiceId, modelId: voice.modelId }),
+    cache: new TemplateCache({
+      dir: paths.ttsCache,
+      voiceId: voice.voiceId,
+      modelId: voice.modelId
+    }),
     sink,
     refreshUsage,
     onVoiceUnavailable: (card) => {
@@ -110,7 +117,9 @@ async function start(): Promise<void> {
   // Dev-only visual checks: CIEL_DEMO_LAYOUT=stage previews the stage layout without saving it.
   const demoLayout = process.env['CIEL_DEMO_LAYOUT']
   const startLayout =
-    !app.isPackaged && (demoLayout === 'stage' || demoLayout === 'corner') ? demoLayout : settings.layout
+    !app.isPackaged && (demoLayout === 'stage' || demoLayout === 'corner')
+      ? demoLayout
+      : settings.layout
 
   overlay = createOverlayWindow(theme, {
     displayId: settings.displayId,
@@ -126,21 +135,21 @@ async function start(): Promise<void> {
   showState()
   const speech = createSpeech(voice, paths, overlay, (on) => {
     speaking = on
-    if (!app.isPackaged) console.log(`[speech] audio ${on ? 'started' : 'finished'} at ${Date.now()}`)
+    if (!app.isPackaged)
+      console.log(`[speech] audio ${on ? 'started' : 'finished'} at ${Date.now()}`)
     showState()
   })
 
   /** Shows a card and speaks it; the card's auto-dismiss restarts when the speech ends. */
   const say = (kind: CardKind, body: string, priority: SpeechPriority, template = false): void => {
     const card: Card = { id: randomUUID(), kind, body, createdAt: Date.now() }
-    overlay?.showCard(card)
+    overlay?.showCard(card, { waitForSpeech: speech !== null })
     const queuedAt = Date.now()
-    void speech
-      ?.enqueue({ text: body, priority, cardId: card.id, template })
-      .then((outcome) => {
-        if (!app.isPackaged) console.log(`[speech] ${outcome} (queued at ${queuedAt}): ${body.slice(0, 48)}`)
-        overlay?.restartDismissTimer(card.id)
-      })
+    void speech?.enqueue({ text: body, priority, cardId: card.id, template }).then((outcome) => {
+      if (!app.isPackaged)
+        console.log(`[speech] ${outcome} (queued at ${queuedAt}): ${body.slice(0, 48)}`)
+      overlay?.restartDismissTimer(card.id)
+    })
   }
 
   const update = (patch: Partial<Settings>): void => {
@@ -164,7 +173,9 @@ async function start(): Promise<void> {
       const primaryId = screen.getPrimaryDisplay().id
       return [
         { id: null, label: 'Main display (follow Windows)' },
-        ...screen.getAllDisplays().map((d, i) => ({ id: d.id, label: displayLabel(d, i, primaryId) }))
+        ...screen
+          .getAllDisplays()
+          .map((d, i) => ({ id: d.id, label: displayLabel(d, i, primaryId) }))
       ]
     },
     currentDisplayId: () => settings.displayId,
@@ -185,7 +196,15 @@ async function start(): Promise<void> {
     // The request arrives while the notice is speaking, so it cuts the notice off and goes first.
     say('notice', 'Your download finished: blender-4.5.zip.', 'notice')
     say('answer', 'Blender is using 62 % of your CPU right now.', 'answer')
-    setTimeout(() => say('request', 'May I move 14 installers from Downloads into Downloads\\Sorted?', 'request'), 1500)
+    setTimeout(
+      () =>
+        say(
+          'request',
+          'May I move 14 installers from Downloads into Downloads\\Sorted?',
+          'request'
+        ),
+      1500
+    )
     restState = 'alert'
     showState()
   }

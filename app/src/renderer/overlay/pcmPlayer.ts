@@ -139,7 +139,9 @@ export class PcmPlayer {
     const t = this.ctx.currentTime
     this.segments = this.segments.filter((s) => s.end > t)
     const seg = this.segments.find((s) => s.start <= t && t < s.end)
-    const level = seg ? (seg.levels[Math.min(seg.levels.length - 1, Math.floor((t - seg.start) / seg.window))] ?? 0) : 0
+    const level = seg
+      ? (seg.levels[Math.min(seg.levels.length - 1, Math.floor((t - seg.start) / seg.window))] ?? 0)
+      : 0
     if (level === 0 && this.lastLevel === 0) return
     this.lastLevel = level
     for (const cb of this.levelCbs) cb(level)

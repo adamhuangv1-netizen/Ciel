@@ -35,6 +35,10 @@ export interface SpeechQueueOptions {
 
 /** Notices still waiting after this long are stale and dropped. */
 export const MAX_NOTICE_WAIT_MS = 30_000
+/** After this many failures in a row reaching ElevenLabs, say once that it's cards only. */
+const OUTAGE_AFTER = 3
+/** A failed account reading is retried no sooner than this. */
+const REFRESH_RETRY_MS = 60_000
 
 interface Pending {
   item: SpeechItem
@@ -68,6 +72,9 @@ export class SpeechQueue {
   private current: { item: SpeechItem; interrupt: () => void } | null = null
   private running = false
   private quiet = false
+  private lastRefresh = Number.NEGATIVE_INFINITY
+  private failuresInARow = 0
+  private outageShown = false
 
   constructor(opts: SpeechQueueOptions) {
     this.o = opts
@@ -108,13 +115,15 @@ export class SpeechQueue {
 
   private async play(p: Pending): Promise<SpeechOutcome> {
     const { item } = p
-    if (item.priority === 'notice' && this.now() - p.enqueuedAt > MAX_NOTICE_WAIT_MS) return 'dropped'
+    if (item.priority === 'notice' && this.now() - p.enqueuedAt > MAX_NOTICE_WAIT_MS)
+      return 'dropped'
     if (this.quiet) return 'skipped'
     const text = speakableLead(item.text)
     if (!text) return 'skipped'
 
     const id = randomUUID()
     const { sink } = this.o
+    const abort = new AbortController()
     let interrupted = false
     let wake: () => void = () => {}
     const cut = new Promise<'interrupted'>((r) => (wake = () => r('interrupted')))
@@ -123,6 +132,7 @@ export class SpeechQueue {
       interrupt: () => {
         if (interrupted) return
         interrupted = true
+        abort.abort()
         sink.stop()
         wake()
       }
@@ -140,14 +150,17 @@ export class SpeechQueue {
           return await finish()
         }
       }
+      await this.refreshIfDue()
       if (this.o.budget.decide(text.length, item.priority) === 'skip') return 'skipped'
 
       let stream: AsyncIterable<Uint8Array>
       try {
-        stream = await this.o.tts.stream(text)
+        stream = await this.o.tts.stream(text, abort.signal)
       } catch (e) {
+        if (interrupted) return 'interrupted'
         return await this.failed(e)
       }
+      if (interrupted) return 'interrupted'
       await this.o.budget.record(text.length)
 
       const parts: Uint8Array[] = []
@@ -158,10 +171,13 @@ export class SpeechQueue {
           parts.push(bytes)
         }
       } catch (e) {
-        if (!interrupted) sink.stop()
+        if (interrupted) return 'interrupted'
+        sink.stop()
         return await this.failed(e)
       }
       if (interrupted) return 'interrupted'
+      this.failuresInARow = 0
+      this.outageShown = false
       sink.end(id)
       if (item.template) await this.o.cache.put(text, concat(parts)).catch(() => {})
       return await finish()
@@ -170,8 +186,30 @@ export class SpeechQueue {
     }
   }
 
+  /** Re-reads the account when the budget asks (first use, after the monthly reset, every 6 h). */
+  private async refreshIfDue(): Promise<void> {
+    const { refreshUsage, budget } = this.o
+    if (!refreshUsage || !budget.syncDue() || this.now() - this.lastRefresh < REFRESH_RETRY_MS)
+      return
+    this.lastRefresh = this.now()
+    await refreshUsage().catch(() => {})
+  }
+
   private async failed(e: unknown): Promise<SpeechOutcome> {
     const kind = classifyTtsError(e)
+    if (kind === 'network' || kind === 'other') {
+      this.failuresInARow++
+      if (this.failuresInARow >= OUTAGE_AFTER && !this.outageShown) {
+        this.outageShown = true
+        this.o.onVoiceUnavailable({
+          id: randomUUID(),
+          kind: 'notice',
+          body: "I can't reach ElevenLabs right now, so it's cards only until it answers again.",
+          createdAt: this.now()
+        })
+      }
+      return 'skipped'
+    }
     if (kind !== 'quota' && kind !== 'auth') return 'skipped'
     const { budget } = this.o
     const alreadyOut = budget.isExhausted()

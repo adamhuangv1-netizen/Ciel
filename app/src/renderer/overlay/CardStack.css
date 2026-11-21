@@ -12,7 +12,10 @@
   border-radius: 6px;
   background: rgba(8, 14, 24, 0.82);
   color: #e6f4ff;
-  font: 14px/1.45 'Segoe UI', system-ui, sans-serif;
+  font:
+    14px/1.45 'Segoe UI',
+    system-ui,
+    sans-serif;
   box-shadow: 0 0 18px color-mix(in srgb, var(--ring) 25%, transparent);
   animation: card-in 160ms ease-out;
 }
@@ -36,7 +39,7 @@
 
 .card__body {
   margin: 0;
-  max-height: calc(1.45em * 8);
+  max-height: min(calc(1.45em * 8), 18vh);
   overflow-y: auto;
   white-space: pre-wrap;
 }
@@ -69,7 +72,10 @@
 }
 
 .card-stack__more {
-  font: 12px 'Segoe UI', system-ui, sans-serif;
+  font:
+    12px 'Segoe UI',
+    system-ui,
+    sans-serif;
   color: #9fc4dd;
   padding-right: 4px;
 }

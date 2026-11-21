@@ -14,17 +14,17 @@ import {
 import { overlayBounds, pickDisplay } from './bounds'
 import { createOutbox } from './outbox'
 import { createOverlayState } from './overlayState'
-
-/** Non-request cards leave the screen this long after they appear (Task 5 restarts it when speech ends). */
-export const AUTO_DISMISS_MS = 12_000
+import { createDismissTimers } from './dismissTimers'
+import { createReloadPolicy } from './rendererRecovery'
 
 export interface OverlayHandle {
-  showCard(c: Card): void
+  /** With waitForSpeech, the card's auto-dismiss countdown starts at restartDismissTimer (its speech ended). */
+  showCard(c: Card, opts?: { waitForSpeech?: boolean }): void
   dismissCard(id: string): void
   setEmblem(s: EmblemState): void
   onCardAction(cb: (cardId: string, actionId: CardAction['id']) => void): void
   sendAudio(channel: string, payload: unknown): void
-  /** Re-arm a card's auto-dismiss timer (e.g. when its speech ends). No-op for request cards. */
+  /** The card's speech ended: start its auto-dismiss countdown. No-op for request cards. */
   restartDismissTimer(id: string): void
   /** Show the overlay on this monitor (null = primary). Falls back to the primary if it's unplugged. */
   moveToDisplay(displayId: number | null): void
@@ -80,6 +80,7 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
   // or crash never loses a pending REQUEST. did-finish-load is too early: React subscribes later.
   // Transient messages (audio) go through the outbox and are held until ready.
   const view = createOverlayState()
+  const dismissTimers = createDismissTimers((id) => handle.dismissCard(id))
   let rendererReady = false
   const direct = (channel: string, payload: unknown): void => {
     if (rendererReady && !win.isDestroyed()) win.webContents.send(channel, payload)
@@ -87,9 +88,17 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
   const outbox = createOutbox((channel, payload) => {
     if (!win.isDestroyed()) win.webContents.send(channel, payload)
   })
+  // A reload or crash never delivers pointerleave, so make the window click-through again
+  // rather than leave a transparent window swallowing every click.
+  const releasePointer = (): void => {
+    if (win.isDestroyed()) return
+    win.setIgnoreMouseEvents(true, { forward: true })
+    dismissTimers.setHovering(false)
+  }
   win.webContents.on('did-start-loading', () => {
     rendererReady = false
     outbox.reset()
+    releasePointer()
   })
   ipcMain.on(IPC.ready, (e) => {
     if (e.sender !== win.webContents) return
@@ -104,14 +113,24 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
   if (is.dev) {
     // The overlay has no devtools open; surface its warnings and errors in the terminal.
     win.webContents.on('console-message', (e) => {
-      if (e.level === 'warning' || e.level === 'error') console.log(`[overlay ${e.level}] ${e.message}`)
+      if (e.level === 'warning' || e.level === 'error')
+        console.log(`[overlay ${e.level}] ${e.message}`)
     })
   }
-  win.webContents.on('render-process-gone', (_e, d) => console.error('overlay renderer gone:', d.reason))
+  // A crashed overlay reloads itself (main replays the cards on ready), a few times a minute at most.
+  const mayReload = createReloadPolicy()
+  win.webContents.on('render-process-gone', (_e, d) => {
+    console.error('overlay renderer gone:', d.reason)
+    releasePointer()
+    if (d.reason === 'clean-exit' || win.isDestroyed()) return
+    if (mayReload(Date.now()))
+      setTimeout(() => !win.isDestroyed() && win.webContents.reload(), 1_000)
+  })
 
   ipcMain.on(IPC.setInteractive, (e, on: unknown) => {
     if (e.sender !== win.webContents || typeof on !== 'boolean') return
     win.setIgnoreMouseEvents(!on, { forward: true })
+    dismissTimers.setHovering(on)
   })
 
   const actionListeners: ((cardId: string, actionId: CardAction['id']) => void)[] = []
@@ -128,13 +147,6 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
     for (const cb of audioDoneListeners) cb(utteranceId)
   })
 
-  const timers = new Map<string, NodeJS.Timeout>()
-  const arm = (id: string): void => {
-    clearTimeout(timers.get(id))
-    if (view.kindOf(id) === 'request') return
-    timers.set(id, setTimeout(() => handle.dismissCard(id), AUTO_DISMISS_MS))
-  }
-
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/overlay/index.html`)
   } else {
@@ -142,14 +154,13 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
   }
 
   const handle: OverlayHandle = {
-    showCard(c) {
+    showCard(c, showOpts) {
       view.addCard(c)
       direct(IPC.showCard, c)
-      arm(c.id)
+      dismissTimers.shown(c, { waitForSpeech: showOpts?.waitForSpeech ?? false })
     },
     dismissCard(id) {
-      clearTimeout(timers.get(id))
-      timers.delete(id)
+      dismissTimers.removed(id)
       view.removeCard(id)
       direct(IPC.dismissCard, id)
     },
@@ -164,7 +175,7 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
       outbox.post(channel, payload)
     },
     restartDismissTimer(id) {
-      if (view.kindOf(id)) arm(id)
+      dismissTimers.speechDone(id)
     },
     moveToDisplay(displayId) {
       preferredId = displayId

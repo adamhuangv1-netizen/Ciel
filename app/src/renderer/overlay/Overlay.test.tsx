@@ -32,14 +32,22 @@ const PORTRAIT: AvatarSource = {
 
 type Listener = (payload: unknown) => void
 
-function fakeApi(): { api: CielApi; emit: (channel: string, payload: unknown) => void; readyCalls: () => number } {
+function fakeApi(): {
+  api: CielApi
+  emit: (channel: string, payload: unknown) => void
+  readyCalls: () => number
+} {
   const listeners = new Map<string, Listener[]>()
   let ready = 0
   const on =
     (channel: string) =>
     (cb: Listener): (() => void) => {
       listeners.set(channel, [...(listeners.get(channel) ?? []), cb])
-      return () => listeners.set(channel, (listeners.get(channel) ?? []).filter((l) => l !== cb))
+      return () =>
+        listeners.set(
+          channel,
+          (listeners.get(channel) ?? []).filter((l) => l !== cb)
+        )
     }
   const api = {
     onCard: on('card'),
@@ -120,6 +128,22 @@ describe('Overlay', () => {
     act(() => fake.emit('avatar', PORTRAIT))
     act(() => portraitErrors.at(-1)?.(new Error('bad picture')))
     expect(screen.getByTestId('emblem')).toBeTruthy()
+  })
+
+  it('shows fewer cards on a short screen, so they all stay on it', () => {
+    const tall = window.innerHeight
+    window.innerHeight = 700
+    try {
+      render(<Overlay />)
+      act(() => {
+        for (let i = 0; i < 3; i++)
+          fake.emit('card', { id: `c${i}`, kind: 'notice', body: `n${i}`, createdAt: i })
+      })
+      expect(screen.getAllByTestId('card')).toHaveLength(1)
+      expect(screen.getByText('+2 more')).toBeTruthy()
+    } finally {
+      window.innerHeight = tall
+    }
   })
 
   it('falls back to the emblem if the model fails to load', () => {

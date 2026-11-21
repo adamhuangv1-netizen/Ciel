@@ -8,7 +8,7 @@ import {
   type OverlayLayout
 } from '../../shared/types'
 import { Emblem } from './Emblem'
-import { CardStack } from './CardStack'
+import { CardStack, visibleCardCount } from './CardStack'
 import { AvatarView } from './avatar/AvatarView'
 import { PortraitView } from './portrait/PortraitView'
 import { framingFor } from './avatar/avatarLogic'
@@ -26,6 +26,13 @@ export function Overlay(): JSX.Element {
   const [avatar, setAvatar] = useState<AvatarSource | null>(null)
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [level, setLevel] = useState(0)
+  const [height, setHeight] = useState(() => window.innerHeight)
+
+  useEffect(() => {
+    const onResize = (): void => setHeight(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     const api = window.ciel
@@ -102,6 +109,7 @@ export function Overlay(): JSX.Element {
       {presence}
       <CardStack
         cards={cards}
+        maxVisible={visibleCardCount(height, layout)}
         theme={theme}
         onAction={(id, action) => window.ciel.cardAction(id, action)}
         setInteractive={(on) => window.ciel.setInteractive(on)}
