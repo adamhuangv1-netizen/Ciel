@@ -5,7 +5,7 @@ A Windows desktop AI assistant: wake word "Hey Ciel", an ElevenLabs voice, a glo
 ## Rules
 
 - Original work only: no copied art, UI, text or cloned voices from the anime.
-- The private persona pack stays out of any public repo or release.
+- The private persona pack (personas/ciel/) is gitignored and never committed: the GitHub repo is public.
 - Every risky action goes through the autonomy gate. The brain never inherits the owner's Claude Code settings, plugins or CLAUDE.md.
 
 ## Run
