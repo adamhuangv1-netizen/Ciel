@@ -77,7 +77,7 @@ export function Overlay(): JSX.Element {
       avatar.kind === 'portrait' ? (
         <PortraitView
           url={avatar.url}
-          eyes={avatar.eyes}
+          boxes={{ eyes: avatar.eyes, lids: avatar.lids, mouth: avatar.mouth }}
           state={state}
           level={level}
           framing={framing}
@@ -85,7 +85,13 @@ export function Overlay(): JSX.Element {
           onError={fallBack}
         />
       ) : (
-        <AvatarView url={avatar.url} state={state} level={level} framing={framing} onError={fallBack} />
+        <AvatarView
+          url={avatar.url}
+          state={state}
+          level={level}
+          framing={framing}
+          onError={fallBack}
+        />
       )
     ) : (
       <Emblem state={state} level={level} theme={theme} />

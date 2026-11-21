@@ -45,10 +45,13 @@ describe('resolveAsset', () => {
 
 describe('avatarSource', () => {
   it('prefers the portrait picture over a VRM model', () => {
-    expect(avatarSource({ avatarPath: AVATAR, portrait: { path: PORTRAIT, eyes: EYES } })).toEqual({
+    const mouth = { x: 0.47, y: 0.4, w: 0.06, h: 0.02 }
+    expect(avatarSource({ avatarPath: AVATAR, portrait: { path: PORTRAIT, eyes: EYES, lids: null, mouth } })).toEqual({
       kind: 'portrait',
       url: PORTRAIT_URL,
-      eyes: EYES
+      eyes: EYES,
+      lids: null,
+      mouth
     })
   })
 

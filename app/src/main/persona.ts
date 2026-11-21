@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
-import type { Box, EmblemTheme } from '../shared/types'
+import type { Box, EmblemTheme, PortraitBoxes } from '../shared/types'
 
 export type OutputFormat = 'pcm_24000' | 'pcm_22050' | 'pcm_16000'
 
@@ -23,8 +23,8 @@ export interface Persona {
   emblem: EmblemTheme
   /** avatar.vrm in the pack, or null. */
   avatarPath: string | null
-  /** The 2D portrait (ciel.png/.webp/.jpg) and where her eyes are in it (portrait.json), or null. */
-  portrait: { path: string; eyes: Box } | null
+  /** The 2D portrait (ciel.png/.webp/.jpg) and where her eyes and mouth are in it (portrait.json), or null. */
+  portrait: ({ path: string } & PortraitBoxes) | null
 }
 
 /** Used when the pack has a picture but no portrait.json: upper middle, where a bust portrait's eyes usually are. */
@@ -59,8 +59,14 @@ const EmblemSchema = z.object({ core: hex, ring: hex, glow: hex, alert: hex })
 
 const BoxSchema = z
   .object({ x: unit, y: unit, w: unit.positive(), h: unit.positive() })
-  .refine((b) => b.x + b.w <= 1 && b.y + b.h <= 1, { message: 'box must lie inside the picture (x + w and y + h at most 1)' })
-const PortraitSchema = z.object({ eyes: BoxSchema })
+  .refine((b) => b.x + b.w <= 1 && b.y + b.h <= 1, {
+    message: 'box must lie inside the picture (x + w and y + h at most 1)'
+  })
+const PortraitSchema = z.object({
+  eyes: BoxSchema,
+  lids: z.tuple([BoxSchema, BoxSchema]).nullable().default(null),
+  mouth: BoxSchema.nullable().default(null)
+})
 
 const FrontmatterSchema = z.object({
   name: z.string().min(1),
@@ -111,7 +117,15 @@ export async function loadPersona(dir: string): Promise<Persona> {
     (s) => (s.isFile() ? avatarFile : null),
     () => null
   )
-  return { name: front.name, addressAs: front.addressAs, brief: body, voice, emblem, avatarPath, portrait: await findPortrait(dir) }
+  return {
+    name: front.name,
+    addressAs: front.addressAs,
+    brief: body,
+    voice,
+    emblem,
+    avatarPath,
+    portrait: await findPortrait(dir)
+  }
 }
 
 const isFile = (file: string): Promise<boolean> =>
@@ -125,8 +139,10 @@ async function findPortrait(dir: string): Promise<Persona['portrait']> {
     const file = path.join(dir, name)
     if (!(await isFile(file))) continue
     const config = path.join(dir, 'portrait.json')
-    const eyes = (await isFile(config)) ? check(PortraitSchema, await readJson(dir, 'portrait.json'), 'portrait.json').eyes : DEFAULT_EYES_BOX
-    return { path: file, eyes }
+    const boxes: PortraitBoxes = (await isFile(config))
+      ? check(PortraitSchema, await readJson(dir, 'portrait.json'), 'portrait.json')
+      : { eyes: DEFAULT_EYES_BOX, lids: null, mouth: null }
+    return { path: file, ...boxes }
   }
   return null
 }

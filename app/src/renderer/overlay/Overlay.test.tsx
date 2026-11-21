@@ -25,7 +25,9 @@ const VRM: AvatarSource = { kind: 'vrm', url: 'ciel-asset://persona/avatar.vrm' 
 const PORTRAIT: AvatarSource = {
   kind: 'portrait',
   url: 'ciel-asset://persona/portrait',
-  eyes: { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
+  eyes: { x: 0.35, y: 0.25, w: 0.3, h: 0.1 },
+  lids: null,
+  mouth: null
 }
 
 type Listener = (payload: unknown) => void

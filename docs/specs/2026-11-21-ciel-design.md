@@ -293,5 +293,5 @@ The system-stats library, how the emblem is rendered (canvas, or SVG/CSS), the i
   - **Full view:** the whole picture, breathing gently. A picture with a background gets soft faded edges; a cut-out (transparent PNG) is drawn as is.
   - **Idle in the corner:** the crop of her eyes in the glowing pill.
   - **Effects:** "sometimes a little" glitch, a 0.08–0.28 s burst every 3–10 s, made of sliced bands, a colour split in the accent colours and a few fragments drifting off. Her glow follows the speech level, turns amber while a REQUEST waits, and pulses while she's thinking.
-  - **Blink and talk:** optional `ciel-eyes-closed.png` and `ciel-mouth-open.png`, edits of the same picture. These come later, patched in through explicit eye and mouth boxes, not by comparing images.
+  - **Blink and talk, from the one picture:** `portrait.json` may also give `lids` (one box per eye) and `mouth`. A blink lowers soft, skin-coloured lids with a lash line over each eye, every 2.5–6 s. While she speaks, a mouth opening sized by the voice level is drawn at the mouth box. Colours are sampled from the picture itself. Without these boxes she doesn't blink or move her mouth.
 - **Loading.** The renderer fetches the picture only through `ciel-asset://persona/portrait`, on the same exact-match allowlist as the model, and serves it with its own image type.

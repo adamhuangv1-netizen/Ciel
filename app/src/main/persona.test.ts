@@ -80,14 +80,27 @@ describe('loadPersona portrait', () => {
     fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
     const eyes = { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
     fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes }))
-    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes })
+    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes, lids: null, mouth: null })
+  })
+
+  it('reads the optional eyelid and mouth boxes used for blinking and talking', async () => {
+    const dir = pack({})
+    fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
+    const eyes = { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
+    const lids = [
+      { x: 0.37, y: 0.27, w: 0.1, h: 0.05 },
+      { x: 0.53, y: 0.27, w: 0.1, h: 0.05 }
+    ]
+    const mouth = { x: 0.47, y: 0.4, w: 0.06, h: 0.02 }
+    fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes, lids, mouth }))
+    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes, lids, mouth })
   })
 
   it('accepts a webp or jpg picture and uses a default eyes box without portrait.json', async () => {
     const dir = pack({})
     fs.writeFileSync(path.join(dir, 'ciel.webp'), 'webp')
     const p = await loadPersona(dir)
-    expect(p.portrait).toEqual({ path: path.join(dir, 'ciel.webp'), eyes: DEFAULT_EYES_BOX })
+    expect(p.portrait).toEqual({ path: path.join(dir, 'ciel.webp'), eyes: DEFAULT_EYES_BOX, lids: null, mouth: null })
 
     const jpgDir = pack({})
     fs.writeFileSync(path.join(jpgDir, 'ciel.jpg'), 'jpg')

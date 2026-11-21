@@ -53,7 +53,15 @@ export interface Box {
 }
 
 /** What stands in for the emblem: the persona's 2D portrait picture, or a 3D VRM model. */
-export type AvatarSource = { kind: 'portrait'; url: string; eyes: Box } | { kind: 'vrm'; url: string }
+export type AvatarSource =
+  ({ kind: 'portrait'; url: string } & PortraitBoxes) | { kind: 'vrm'; url: string }
+
+/** Where things are in the portrait picture: the eyes crop, and optionally each eye (for blinking) and the mouth (for talking). */
+export interface PortraitBoxes {
+  eyes: Box
+  lids: [Box, Box] | null
+  mouth: Box | null
+}
 
 export interface AudioChunk {
   utteranceId: string

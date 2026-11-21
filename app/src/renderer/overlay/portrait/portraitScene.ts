@@ -1,11 +1,23 @@
-import type { Box, EmblemState } from '../../../shared/types'
-import type { Framing } from '../avatar/avatarLogic'
-import { containRect, createGlitcher, sourceRect, type Rect } from './portraitLogic'
+import type { EmblemState, PortraitBoxes } from '../../../shared/types'
+import { createBlinker, type Framing } from '../avatar/avatarLogic'
+import {
+  averageColor,
+  boxRect,
+  containRect,
+  createGlitcher,
+  lidRect,
+  mapRect,
+  mouthShape,
+  sourceRect,
+  type Rect
+} from './portraitLogic'
 
 export interface PortraitScene {
   /** Resolves once the picture is loaded; rejects if it can't be. */
   ready: Promise<void>
   setState(s: EmblemState): void
+  /** Speech loudness 0-1; opens the mouth while she's speaking. */
+  setLevel(level: number): void
   setFraming(f: Framing): void
   dispose(): void
 }
@@ -80,6 +92,53 @@ function tinted(src: CanvasImageSource, w: number, h: number, color: string): HT
   return c
 }
 
+interface FaceColors {
+  /** Per eye: the skin just below it (the closing lid) and its lash line. */
+  skin: [string, string]
+  lash: [string, string]
+  mouth: string
+}
+
+const css = (c: { r: number; g: number; b: number }, k = 1): string =>
+  `rgb(${Math.round(c.r * k)}, ${Math.round(c.g * k)}, ${Math.round(c.b * k)})`
+
+/** Colours for drawing a blink and an open mouth, sampled from the picture itself. */
+function sampleFace(
+  img: ImageBitmap,
+  boxes: PortraitBoxes,
+  size: { w: number; h: number }
+): FaceColors | null {
+  try {
+    const [, g] = canvas2d(size.w, size.h)
+    g.drawImage(img, 0, 0)
+    const data = g.getImageData(0, 0, size.w, size.h).data
+    const lids = boxes.lids ?? [boxes.eyes, boxes.eyes]
+    const skin = lids.map((b) => {
+      const e = boxRect(b, size)
+      return css(
+        averageColor(data, size.w, {
+          x: e.x + e.w * 0.2,
+          y: e.y + e.h * 1.15,
+          w: e.w * 0.6,
+          h: Math.max(1, e.h * 0.3)
+        })
+      )
+    }) as [string, string]
+    const lash = lids.map((b) => {
+      const e = boxRect(b, size)
+      return css(
+        averageColor(data, size.w, { x: e.x, y: e.y, w: e.w, h: Math.max(1, e.h * 0.15) }),
+        0.8
+      )
+    }) as [string, string]
+    const m = boxes.mouth ? boxRect(boxes.mouth, size) : null
+    const mouth = m ? css(averageColor(data, size.w, m), 0.45) : 'rgb(110, 40, 60)'
+    return { skin, lash, mouth }
+  } catch {
+    return null
+  }
+}
+
 const hash = (n: number): number => {
   const s = Math.sin(n * 127.1) * 43758.5453
   return s - Math.floor(s)
@@ -92,10 +151,15 @@ const hash = (n: number): number => {
 export function createPortraitScene(
   canvas: HTMLCanvasElement,
   url: string,
-  eyes: Box,
+  boxes: PortraitBoxes,
   colors: PortraitColors
 ): PortraitScene {
   const ctx = canvas.getContext('2d')!
+  const { eyes } = boxes
+  const blinker = createBlinker()
+  let face: FaceColors | null = null
+  let level = 0
+  let smoothed = 0
 
   let framing: Framing = 'full'
   let state: EmblemState = 'idle'
@@ -122,6 +186,7 @@ export function createPortraitScene(
       size = { w: img.width, h: img.height }
       const pic = hasTransparency(img) ? img : featherEdges(img)
       picture = pic
+      if (boxes.lids || boxes.mouth) face = sampleFace(img, boxes, size)
       tints = [tinted(pic, size.w, size.h, colors.glow), tinted(pic, size.w, size.h, colors.accent)]
     })
 
@@ -137,6 +202,56 @@ export function createPortraitScene(
         age: 0,
         life: 0.4 + Math.random() * 0.8
       })
+    }
+  }
+
+  /** Blink: the upper lids close in skin colour with a lash line. Talk: a mouth opening sized by loudness. */
+  const drawFace = (t: number, from: Rect, to: Rect): void => {
+    if (!face) return
+    const f = face
+    if (boxes.lids) {
+      const weight = blinker.weightAt(t)
+      boxes.lids.forEach((lid, i) => {
+        const eye = boxRect(lid, size)
+        const r = lidRect(eye, weight)
+        if (!r) return
+        const d = mapRect(r, from, to)
+        const eyeH = (eye.h * to.h) / from.h
+        // Soft top and sides so the lid melts into the brow instead of reading as a box.
+        const skin = f.skin[i]!
+        const fill = ctx.createLinearGradient(0, d.y, 0, d.y + d.h)
+        fill.addColorStop(0, skin.replace('rgb(', 'rgba(').replace(')', ', 0)'))
+        fill.addColorStop(Math.min(0.9, (eyeH * 0.45) / d.h), skin)
+        fill.addColorStop(1, skin)
+        ctx.fillStyle = fill
+        ctx.filter = `blur(${Math.max(0.5, eyeH * 0.06).toFixed(1)}px)`
+        ctx.beginPath()
+        ctx.ellipse(d.x + d.w / 2, d.y + d.h / 2, d.w * 0.52, d.h / 2, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.filter = 'none'
+        ctx.strokeStyle = f.lash[i]!
+        ctx.lineWidth = Math.max(1, eyeH * 0.12)
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        ctx.moveTo(d.x, d.y + d.h - eyeH * 0.15)
+        ctx.quadraticCurveTo(
+          d.x + d.w / 2,
+          d.y + d.h + eyeH * 0.08,
+          d.x + d.w,
+          d.y + d.h - eyeH * 0.15
+        )
+        ctx.stroke()
+      })
+    }
+    smoothed += (level - smoothed) * 0.35
+    const open = state === 'speaking' ? smoothed : 0
+    const m = boxes.mouth ? mouthShape(boxRect(boxes.mouth, size), open) : null
+    if (m) {
+      const d = mapRect({ x: m.cx - m.rx, y: m.cy - m.ry, w: m.rx * 2, h: m.ry * 2 }, from, to)
+      ctx.fillStyle = f.mouth
+      ctx.beginPath()
+      ctx.ellipse(d.x + d.w / 2, d.y + d.h / 2, d.w / 2, d.h / 2, 0, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 
@@ -179,6 +294,7 @@ export function createPortraitScene(
       }
     }
     ctx.drawImage(picture, src.x, src.y, src.w, src.h, dest.x, dest.y, dest.w, dest.h)
+    drawFace(t, src, dest)
 
     const g = glitch(t)
     if (g.strength > 0) {
@@ -257,6 +373,9 @@ export function createPortraitScene(
     ready,
     setState: (s) => {
       state = s
+    },
+    setLevel: (l) => {
+      level = l
     },
     setFraming: (f) => {
       framing = f

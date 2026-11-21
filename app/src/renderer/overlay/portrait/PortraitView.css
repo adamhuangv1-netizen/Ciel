@@ -31,7 +31,9 @@
 }
 
 .portrait--full .portrait__canvas {
-  filter: drop-shadow(0 0 calc(4px + var(--level) * 16px) color-mix(in srgb, var(--glow) 70%, transparent));
+  filter: drop-shadow(
+    0 0 calc(4px + var(--level) * 16px) color-mix(in srgb, var(--glow) 70%, transparent)
+  );
 }
 
 .portrait--full.portrait--alert .portrait__canvas {

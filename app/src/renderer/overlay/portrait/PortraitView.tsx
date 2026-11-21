@@ -1,12 +1,12 @@
 import { useEffect, useRef, type CSSProperties, type JSX } from 'react'
-import type { Box, EmblemState, EmblemTheme } from '../../../shared/types'
+import type { EmblemState, EmblemTheme, PortraitBoxes } from '../../../shared/types'
 import type { Framing } from '../avatar/avatarLogic'
 import { createPortraitScene, type PortraitScene } from './portraitScene'
 import './PortraitView.css'
 
 export interface PortraitViewProps {
   url: string
-  eyes: Box
+  boxes: PortraitBoxes
   state: EmblemState
   level: number
   framing: Framing
@@ -15,7 +15,15 @@ export interface PortraitViewProps {
   onError(err: unknown): void
 }
 
-export function PortraitView({ url, eyes, state, level, framing, theme, onError }: PortraitViewProps): JSX.Element {
+export function PortraitView({
+  url,
+  boxes,
+  state,
+  level,
+  framing,
+  theme,
+  onError
+}: PortraitViewProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sceneRef = useRef<PortraitScene | null>(null)
   const onErrorRef = useRef(onError)
@@ -24,10 +32,12 @@ export function PortraitView({ url, eyes, state, level, framing, theme, onError 
   framingRef.current = framing
   const stateRef = useRef(state)
   stateRef.current = state
+  // Boxes arrive as a fresh object with every message; compare them by value.
+  const boxesKey = JSON.stringify(boxes)
 
   useEffect(() => {
     if (!canvasRef.current) return
-    const s = createPortraitScene(canvasRef.current, url, { x: eyes.x, y: eyes.y, w: eyes.w, h: eyes.h }, {
+    const s = createPortraitScene(canvasRef.current, url, JSON.parse(boxesKey) as PortraitBoxes, {
       glow: theme.glow,
       accent: theme.ring
     })
@@ -39,9 +49,10 @@ export function PortraitView({ url, eyes, state, level, framing, theme, onError 
       s.dispose()
       sceneRef.current = null
     }
-  }, [url, eyes.x, eyes.y, eyes.w, eyes.h, theme.glow, theme.ring])
+  }, [url, boxesKey, theme.glow, theme.ring])
 
   useEffect(() => sceneRef.current?.setState(state), [state])
+  useEffect(() => sceneRef.current?.setLevel(level), [level])
   useEffect(() => sceneRef.current?.setFraming(framing), [framing])
 
   const style = {
