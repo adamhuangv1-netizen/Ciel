@@ -46,7 +46,9 @@ export const DEFAULT_THEME: EmblemTheme = {
 
 export interface AudioChunk {
   utteranceId: string
+  /** 16-bit little-endian mono PCM. */
   bytes: Uint8Array
+  sampleRate: number
 }
 
 /** The API the overlay preload exposes as `window.ciel`. Subscribers return an unsubscribe function. */

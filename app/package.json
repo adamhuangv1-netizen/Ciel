@@ -23,6 +23,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@elevenlabs/elevenlabs-js": "^2.79.0",
     "@pixiv/three-vrm": "^3.5.5",
     "three": "^0.187.0",
     "zod": "^4.6.7"

@@ -28,6 +28,8 @@ export interface OverlayHandle {
   /** Show the overlay on this monitor (null = primary). Falls back to the primary if it's unplugged. */
   moveToDisplay(displayId: number | null): void
   setLayout(layout: OverlayLayout): void
+  /** The overlay finished playing an utterance (IPC.audioDone). */
+  onAudioDone(cb: (utteranceId: string) => void): void
 }
 
 export interface OverlayOptions {
@@ -58,7 +60,9 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
       preload: join(__dirname, '../preload/overlay.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Speech plays without a click: the overlay never receives one.
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
   win.setAlwaysOnTop(true, 'screen-saver')
@@ -110,6 +114,12 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
     for (const cb of actionListeners) cb(cardId, actionId as CardAction['id'])
   })
 
+  const audioDoneListeners: ((utteranceId: string) => void)[] = []
+  ipcMain.on(IPC.audioDone, (e, utteranceId: unknown) => {
+    if (e.sender !== win.webContents || typeof utteranceId !== 'string') return
+    for (const cb of audioDoneListeners) cb(utteranceId)
+  })
+
   const timers = new Map<string, NodeJS.Timeout>()
   const arm = (id: string): void => {
     clearTimeout(timers.get(id))
@@ -155,6 +165,9 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
     setLayout(next) {
       layout = next
       direct(IPC.layout, next)
+    },
+    onAudioDone(cb) {
+      audioDoneListeners.push(cb)
     }
   }
   return handle

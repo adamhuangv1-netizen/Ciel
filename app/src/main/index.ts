@@ -3,10 +3,15 @@ import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { electronApp } from '@electron-toolkit/utils'
-import { DEFAULT_THEME, type Card, type EmblemTheme } from '../shared/types'
-import { cielPaths } from './paths'
+import { DEFAULT_THEME, type Card, type CardKind, type EmblemState, type EmblemTheme } from '../shared/types'
+import { cielPaths, type CielPaths } from './paths'
 import { loadSettings, saveSettings, type Settings } from './settings'
-import { loadPersona } from './persona'
+import { loadPersona, sampleRateOf, type VoiceSettings } from './persona'
+import { createTts, fetchAccountUsage } from './voice/tts'
+import { TemplateCache } from './voice/templateCache'
+import { SpeechQueue } from './voice/speechQueue'
+import { SpeechBudget, type SpeechPriority } from './voice/speechBudget'
+import { createAudioSink } from './voice/audioSink'
 import { ASSET_SCHEME, AVATAR_URL, resolveAsset } from './assets'
 import { displayLabel } from './overlay/bounds'
 import { createOverlayWindow, type OverlayHandle } from './overlay/overlayWindow'
@@ -29,6 +34,45 @@ function personaDir(): string {
     : path.join(app.getAppPath(), '..', 'personas', 'ciel')
 }
 
+/** Her voice, or null for cards only (no key, or no voice designed yet). */
+function createSpeech(
+  voice: VoiceSettings | null,
+  paths: CielPaths,
+  overlay: OverlayHandle,
+  onSpeaking: (on: boolean) => void
+): SpeechQueue | null {
+  const apiKey = process.env['ELEVENLABS_API_KEY']
+  if (!apiKey) {
+    console.warn('ELEVENLABS_API_KEY is not set: cards only')
+    return null
+  }
+  if (!voice || voice.voiceId.startsWith('PENDING')) {
+    console.warn('no voice chosen yet (voice.json): cards only')
+    return null
+  }
+  const budget = new SpeechBudget({ statePath: path.join(paths.stateDir, 'speech-budget.json') })
+  const refreshUsage = async (): Promise<void> => budget.sync(await fetchAccountUsage(apiKey))
+  refreshUsage().catch((e: Error) => console.warn('could not read ElevenLabs usage:', e.message))
+
+  const sink = createAudioSink({
+    send: (channel, payload) => overlay.sendAudio(channel, payload),
+    sampleRate: sampleRateOf(voice.outputFormat)
+  })
+  overlay.onAudioDone((id) => sink.ack(id))
+  sink.onSpeaking(onSpeaking)
+  return new SpeechQueue({
+    tts: createTts(apiKey, voice),
+    budget,
+    cache: new TemplateCache({ dir: paths.ttsCache, voiceId: voice.voiceId, modelId: voice.modelId }),
+    sink,
+    refreshUsage,
+    onVoiceUnavailable: (card) => {
+      console.warn('voice unavailable:', card.body)
+      overlay.showCard(card)
+    }
+  })
+}
+
 async function start(): Promise<void> {
   electronApp.setAppUserModelId('com.ciel.app')
   const paths = cielPaths(app.getPath('appData'))
@@ -36,10 +80,12 @@ async function start(): Promise<void> {
 
   let theme: EmblemTheme = DEFAULT_THEME
   let avatarPath: string | null = null
+  let voice: VoiceSettings | null = null
   try {
     const persona = await loadPersona(personaDir())
     theme = persona.emblem
     avatarPath = persona.avatarPath
+    voice = persona.voice
   } catch (e) {
     console.error('persona pack not loaded; using defaults:', (e as Error).message)
   }
@@ -62,8 +108,31 @@ async function start(): Promise<void> {
     layout: startLayout,
     avatarUrl: avatarPath ? AVATAR_URL : null
   })
-  overlay.setEmblem('idle')
   overlay.onCardAction((cardId) => overlay?.dismissCard(cardId))
+
+  // While audio plays she's 'speaking'; otherwise she shows her resting state.
+  let restState: EmblemState = 'idle'
+  let speaking = false
+  const showState = (): void => overlay?.setEmblem(speaking ? 'speaking' : restState)
+  showState()
+  const speech = createSpeech(voice, paths, overlay, (on) => {
+    speaking = on
+    if (!app.isPackaged) console.log(`[speech] audio ${on ? 'started' : 'finished'} at ${Date.now()}`)
+    showState()
+  })
+
+  /** Shows a card and speaks it; the card's auto-dismiss restarts when the speech ends. */
+  const say = (kind: CardKind, body: string, priority: SpeechPriority, template = false): void => {
+    const card: Card = { id: randomUUID(), kind, body, createdAt: Date.now() }
+    overlay?.showCard(card)
+    const queuedAt = Date.now()
+    void speech
+      ?.enqueue({ text: body, priority, cardId: card.id, template })
+      .then((outcome) => {
+        if (!app.isPackaged) console.log(`[speech] ${outcome} (queued at ${queuedAt}): ${body.slice(0, 48)}`)
+        overlay?.restartDismissTimer(card.id)
+      })
+  }
 
   const update = (patch: Partial<Settings>): void => {
     settings = { ...settings, ...patch }
@@ -74,18 +143,10 @@ async function start(): Promise<void> {
     onToggleMute: () => {
       // Ears arrive in M1b.
     },
-    onToggleQuiet: () => {
-      // Speech arrives in Task 5.
-    },
+    onToggleQuiet: (quiet) => speech?.setQuiet(quiet),
     onTestSpeak: app.isPackaged
       ? undefined
-      : () =>
-          overlay?.showCard({
-            id: randomUUID(),
-            kind: 'notice',
-            body: 'This is a test line, Master. Everything is in order.',
-            createdAt: Date.now()
-          }),
+      : () => say('notice', 'This is a test line, Master. Everything is in order.', 'notice'),
     onQuit: () => {
       tray?.tray.destroy()
       app.quit()
@@ -112,15 +173,12 @@ async function start(): Promise<void> {
   screen.on('display-removed', () => tray?.refresh())
 
   if (!app.isPackaged && process.env['CIEL_DEMO'] === '1') {
-    const demo: [Card['kind'], string][] = [
-      ['notice', 'Your download finished: blender-4.5.zip.'],
-      ['answer', 'Blender is using 62 % of your CPU right now.'],
-      ['request', 'May I move 14 installers from Downloads into Downloads\\Sorted?']
-    ]
-    demo.forEach(([kind, body], i) =>
-      overlay?.showCard({ id: randomUUID(), kind, body, createdAt: Date.now() + i })
-    )
-    overlay.setEmblem('alert')
+    // The request arrives while the notice is speaking, so it cuts the notice off and goes first.
+    say('notice', 'Your download finished: blender-4.5.zip.', 'notice')
+    say('answer', 'Blender is using 62 % of your CPU right now.', 'answer')
+    setTimeout(() => say('request', 'May I move 14 installers from Downloads into Downloads\\Sorted?', 'request'), 1500)
+    restState = 'alert'
+    showState()
   }
 }
 
