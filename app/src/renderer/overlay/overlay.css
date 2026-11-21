@@ -9,7 +9,8 @@ body,
   user-select: none;
 }
 
-.overlay {
+/* corner: emblem bottom-right over the desktop, cards stacked above it */
+.overlay--corner {
   position: fixed;
   right: 24px;
   bottom: 24px;
@@ -17,4 +18,28 @@ body,
   flex-direction: column-reverse;
   align-items: flex-end;
   gap: 12px;
+  --emblem-size: 200px;
+}
+
+/* stage: a dedicated monitor; large centred emblem on a dark backdrop, cards beneath it */
+.overlay--stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4vh;
+  background: radial-gradient(circle at 50% 42%, #0c1a2b 0%, #050a12 60%, #020408 100%);
+  --emblem-size: min(55vh, 55vw);
+}
+
+.overlay--stage .card-stack {
+  flex-direction: column;
+  align-items: center;
+}
+
+.overlay--stage .card {
+  width: min(560px, 80vw);
+  font-size: 17px;
 }

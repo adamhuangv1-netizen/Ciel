@@ -2,6 +2,9 @@ export type CardKind = 'notice' | 'answer' | 'report' | 'request'
 
 export type EmblemState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'alert'
 
+/** corner: emblem bottom-right over the desktop. stage: large centred emblem on a dark backdrop (a dedicated monitor). */
+export type OverlayLayout = 'corner' | 'stage'
+
 export interface CardAction {
   id: 'approve' | 'deny' | 'always' | 'open' | 'dismiss'
   label: string
@@ -52,6 +55,7 @@ export interface CielApi {
   onDismiss(cb: (cardId: string) => void): () => void
   onEmblem(cb: (state: EmblemState) => void): () => void
   onTheme(cb: (theme: EmblemTheme) => void): () => void
+  onLayout(cb: (layout: OverlayLayout) => void): () => void
   cardAction(cardId: string, actionId: CardAction['id']): void
   setInteractive(on: boolean): void
   onAudioChunk(cb: (chunk: AudioChunk) => void): () => void
@@ -74,6 +78,7 @@ export const CARD_ACTION_IDS: readonly CardAction['id'][] = [
 export const IPC = {
   ready: 'overlay:ready',
   theme: 'overlay:theme',
+  layout: 'overlay:layout',
   showCard: 'overlay:show-card',
   dismissCard: 'overlay:dismiss-card',
   cardAction: 'overlay:card-action',
