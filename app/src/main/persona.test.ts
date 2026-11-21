@@ -62,6 +62,18 @@ describe('loadPersona', () => {
   })
 })
 
+describe('loadPersona avatar', () => {
+  it('reports avatar.vrm when the pack has one', async () => {
+    const dir = pack({})
+    fs.writeFileSync(path.join(dir, 'avatar.vrm'), 'glTF')
+    expect((await loadPersona(dir)).avatarPath).toBe(path.join(dir, 'avatar.vrm'))
+  })
+
+  it('reports no avatar otherwise', async () => {
+    expect((await loadPersona(pack({}))).avatarPath).toBeNull()
+  })
+})
+
 describe('sampleRateOf', () => {
   it('reads the rate from the format name', () => {
     expect(sampleRateOf('pcm_24000')).toBe(24000)

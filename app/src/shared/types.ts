@@ -56,6 +56,8 @@ export interface CielApi {
   onEmblem(cb: (state: EmblemState) => void): () => void
   onTheme(cb: (theme: EmblemTheme) => void): () => void
   onLayout(cb: (layout: OverlayLayout) => void): () => void
+  /** URL of the persona's VRM avatar, or null to show the emblem. */
+  onAvatar(cb: (url: string | null) => void): () => void
   cardAction(cardId: string, actionId: CardAction['id']): void
   setInteractive(on: boolean): void
   onAudioChunk(cb: (chunk: AudioChunk) => void): () => void
@@ -79,6 +81,7 @@ export const IPC = {
   ready: 'overlay:ready',
   theme: 'overlay:theme',
   layout: 'overlay:layout',
+  avatar: 'overlay:avatar',
   showCard: 'overlay:show-card',
   dismissCard: 'overlay:dismiss-card',
   cardAction: 'overlay:card-action',

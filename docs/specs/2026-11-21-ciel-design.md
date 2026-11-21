@@ -274,3 +274,13 @@ Dropped:
 ## Left to the builder
 
 The system-stats library, how the emblem is rendered (canvas, or SVG/CSS), the internal module layout under `app/src`, default wake sensitivity, card timing, the exact read-only command allowlist (start conservative).
+
+## Presence update (2026-11-21, owner decision)
+
+- **Avatar instead of emblem.** Ciel appears as a 3D anime-style VRM avatar that the owner creates as an **original character** in VRoid Studio and saves as `personas/ciel/avatar.vrm` (private pack, gitignored). The official Ciel design is not recreated.
+  - **In the corner layout:** idle shrinks to just her eyes in a glowing pill. Any other state shows head and shoulders.
+  - **In the stage layout:** the full bust is always shown.
+  - **Live behaviour:** she blinks every 2.5–6 s, opens her mouth with the speech level, breathes, sways slightly, glances aside while thinking and looks concerned on a REQUEST.
+- **Fallback.** With no model, or one that fails to load, the original emblem is shown instead.
+- **Loading.** The renderer loads the model only through `ciel-asset://persona/avatar.vrm`. That's an exact-match allowlist, so nothing else in the persona pack is reachable from the page.
+- **Layout and monitor.** Corner (emblem 200 px, or avatar) or stage (large, centred, dark backdrop) on any connected monitor, picked from the tray and saved in `settings.json`.

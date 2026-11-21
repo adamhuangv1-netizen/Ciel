@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, act } from '@testing-library/react'
 import type { CielApi, OverlayLayout } from '../../shared/types'
 import { Overlay } from './Overlay'
+
+// WebGL isn't available in jsdom: stand in for the 3D view with a plain element.
+const avatarErrors: ((e: unknown) => void)[] = []
+vi.mock('./avatar/AvatarView', () => ({
+  AvatarView: (p: { framing: string; onError(e: unknown): void }) => {
+    avatarErrors.push(p.onError)
+    return <div data-testid="avatar" data-framing={p.framing} />
+  }
+}))
 
 type Listener = (payload: unknown) => void
 
@@ -21,6 +30,7 @@ function fakeApi(): { api: CielApi; emit: (channel: string, payload: unknown) =>
     onEmblem: on('emblem'),
     onTheme: on('theme'),
     onLayout: on('layout'),
+    onAvatar: on('avatar'),
     onAudioChunk: on('chunk'),
     onAudioEnd: on('end'),
     onAudioStop: on('stop'),
@@ -61,5 +71,27 @@ describe('Overlay', () => {
     render(<Overlay />)
     act(() => fake.emit('layout', 'stage' satisfies OverlayLayout))
     expect(screen.getByTestId('overlay').getAttribute('data-layout')).toBe('stage')
+  })
+
+  it('shows the emblem when there is no avatar model', () => {
+    render(<Overlay />)
+    expect(screen.getByTestId('emblem')).toBeTruthy()
+    expect(screen.queryByTestId('avatar')).toBeNull()
+  })
+
+  it('shows the avatar, minimised to her eyes while idle in the corner', () => {
+    render(<Overlay />)
+    act(() => fake.emit('avatar', 'ciel-asset://persona/avatar.vrm'))
+    expect(screen.queryByTestId('emblem')).toBeNull()
+    expect(screen.getByTestId('avatar').getAttribute('data-framing')).toBe('eyes')
+    act(() => fake.emit('emblem', 'speaking'))
+    expect(screen.getByTestId('avatar').getAttribute('data-framing')).toBe('full')
+  })
+
+  it('falls back to the emblem if the model fails to load', () => {
+    render(<Overlay />)
+    act(() => fake.emit('avatar', 'ciel-asset://persona/avatar.vrm'))
+    act(() => avatarErrors.at(-1)?.(new Error('bad file')))
+    expect(screen.getByTestId('emblem')).toBeTruthy()
   })
 })

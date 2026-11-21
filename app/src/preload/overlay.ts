@@ -13,6 +13,7 @@ const api: CielApi = {
   onEmblem: (cb) => subscribe(IPC.setEmblem, cb),
   onTheme: (cb) => subscribe(IPC.theme, cb),
   onLayout: (cb) => subscribe(IPC.layout, cb),
+  onAvatar: (cb) => subscribe(IPC.avatar, cb),
   cardAction: (cardId, actionId) => ipcRenderer.send(IPC.cardAction, cardId, actionId),
   setInteractive: (on) => ipcRenderer.send(IPC.setInteractive, on),
   onAudioChunk: (cb) => subscribe(IPC.audioChunk, cb),

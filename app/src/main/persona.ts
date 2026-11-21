@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 import type { EmblemTheme } from '../shared/types'
@@ -21,6 +21,8 @@ export interface Persona {
   brief: string
   voice: VoiceSettings
   emblem: EmblemTheme
+  /** avatar.vrm in the pack (the owner's own VRoid export), or null to show the emblem instead. */
+  avatarPath: string | null
 }
 
 export class PersonaError extends Error {
@@ -93,5 +95,10 @@ export async function loadPersona(dir: string): Promise<Persona> {
   const front = check(FrontmatterSchema, meta, 'persona.md')
   const voice = check(VoiceSchema, await readJson(dir, 'voice.json'), 'voice.json')
   const emblem = check(EmblemSchema, await readJson(dir, 'emblem.json'), 'emblem.json')
-  return { name: front.name, addressAs: front.addressAs, brief: body, voice, emblem }
+  const avatarFile = path.join(dir, 'avatar.vrm')
+  const avatarPath = await stat(avatarFile).then(
+    (s) => (s.isFile() ? avatarFile : null),
+    () => null
+  )
+  return { name: front.name, addressAs: front.addressAs, brief: body, voice, emblem, avatarPath }
 }

@@ -33,6 +33,8 @@ export interface OverlayHandle {
 export interface OverlayOptions {
   displayId: number | null
   layout: OverlayLayout
+  /** ciel-asset:// URL of the VRM avatar, or null to show the emblem. */
+  avatarUrl: string | null
 }
 
 export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): OverlayHandle {
@@ -89,6 +91,7 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
     rendererReady = true
     direct(IPC.theme, theme)
     direct(IPC.layout, layout)
+    direct(IPC.avatar, opts.avatarUrl)
     for (const [channel, payload] of view.replay()) direct(channel, payload)
     outbox.ready()
   })
