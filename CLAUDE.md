@@ -15,7 +15,7 @@ A Windows desktop AI assistant: wake word "Hey Ciel", an ElevenLabs voice, a glo
 ## Where things live
 
 - [app/](app/): Electron + TypeScript desktop app (main, preload, renderer)
-- personas/ciel/: the private persona pack (persona.md, voice.json, emblem.json, optional avatar.vrm from VRoid Studio); gitignored, local only
+- personas/ciel/: the private persona pack (persona.md, voice.json, emblem.json, the owner's portrait ciel.png + portrait.json, optional avatar.vrm); gitignored, local only
 - [Emblem mockups](docs/design/emblem-mockups.html): three original emblem variants (the fallback when there's no avatar.vrm)
 
 - [Design](docs/specs/2026-11-21-ciel-design.md): what Ciel is, the decisions, architecture, roadmap (M1–M5)

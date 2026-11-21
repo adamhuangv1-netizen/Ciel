@@ -44,6 +44,17 @@ export const DEFAULT_THEME: EmblemTheme = {
   alert: '#ffb347'
 }
 
+/** A rectangle as fractions (0–1) of a picture's width and height. */
+export interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** What stands in for the emblem: the persona's 2D portrait picture, or a 3D VRM model. */
+export type AvatarSource = { kind: 'portrait'; url: string; eyes: Box } | { kind: 'vrm'; url: string }
+
 export interface AudioChunk {
   utteranceId: string
   /** 16-bit little-endian mono PCM. */
@@ -58,8 +69,8 @@ export interface CielApi {
   onEmblem(cb: (state: EmblemState) => void): () => void
   onTheme(cb: (theme: EmblemTheme) => void): () => void
   onLayout(cb: (layout: OverlayLayout) => void): () => void
-  /** URL of the persona's VRM avatar, or null to show the emblem. */
-  onAvatar(cb: (url: string | null) => void): () => void
+  /** The persona's portrait or VRM avatar, or null to show the emblem. */
+  onAvatar(cb: (src: AvatarSource | null) => void): () => void
   cardAction(cardId: string, actionId: CardAction['id']): void
   setInteractive(on: boolean): void
   onAudioChunk(cb: (chunk: AudioChunk) => void): () => void

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, act } from '@testing-library/react'
-import type { CielApi, OverlayLayout } from '../../shared/types'
+import type { AvatarSource, CielApi, OverlayLayout } from '../../shared/types'
 import { Overlay } from './Overlay'
 
 // WebGL isn't available in jsdom: stand in for the 3D view with a plain element.
@@ -12,6 +12,21 @@ vi.mock('./avatar/AvatarView', () => ({
     return <div data-testid="avatar" data-framing={p.framing} />
   }
 }))
+
+const portraitErrors: ((e: unknown) => void)[] = []
+vi.mock('./portrait/PortraitView', () => ({
+  PortraitView: (p: { framing: string; onError(e: unknown): void }) => {
+    portraitErrors.push(p.onError)
+    return <div data-testid="portrait" data-framing={p.framing} />
+  }
+}))
+
+const VRM: AvatarSource = { kind: 'vrm', url: 'ciel-asset://persona/avatar.vrm' }
+const PORTRAIT: AvatarSource = {
+  kind: 'portrait',
+  url: 'ciel-asset://persona/portrait',
+  eyes: { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
+}
 
 type Listener = (payload: unknown) => void
 
@@ -81,16 +96,33 @@ describe('Overlay', () => {
 
   it('shows the avatar, minimised to her eyes while idle in the corner', () => {
     render(<Overlay />)
-    act(() => fake.emit('avatar', 'ciel-asset://persona/avatar.vrm'))
+    act(() => fake.emit('avatar', VRM))
     expect(screen.queryByTestId('emblem')).toBeNull()
     expect(screen.getByTestId('avatar').getAttribute('data-framing')).toBe('eyes')
     act(() => fake.emit('emblem', 'speaking'))
     expect(screen.getByTestId('avatar').getAttribute('data-framing')).toBe('full')
   })
 
+  it('shows her portrait, minimised to her eyes while idle in the corner', () => {
+    render(<Overlay />)
+    act(() => fake.emit('avatar', PORTRAIT))
+    expect(screen.queryByTestId('emblem')).toBeNull()
+    expect(screen.queryByTestId('avatar')).toBeNull()
+    expect(screen.getByTestId('portrait').getAttribute('data-framing')).toBe('eyes')
+    act(() => fake.emit('emblem', 'alert'))
+    expect(screen.getByTestId('portrait').getAttribute('data-framing')).toBe('full')
+  })
+
+  it('falls back to the emblem if the portrait fails to load', () => {
+    render(<Overlay />)
+    act(() => fake.emit('avatar', PORTRAIT))
+    act(() => portraitErrors.at(-1)?.(new Error('bad picture')))
+    expect(screen.getByTestId('emblem')).toBeTruthy()
+  })
+
   it('falls back to the emblem if the model fails to load', () => {
     render(<Overlay />)
-    act(() => fake.emit('avatar', 'ciel-asset://persona/avatar.vrm'))
+    act(() => fake.emit('avatar', VRM))
     act(() => avatarErrors.at(-1)?.(new Error('bad file')))
     expect(screen.getByTestId('emblem')).toBeTruthy()
   })

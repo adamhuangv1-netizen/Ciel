@@ -3,7 +3,14 @@ import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { electronApp } from '@electron-toolkit/utils'
-import { DEFAULT_THEME, type Card, type CardKind, type EmblemState, type EmblemTheme } from '../shared/types'
+import {
+  DEFAULT_THEME,
+  type AvatarSource,
+  type Card,
+  type CardKind,
+  type EmblemState,
+  type EmblemTheme
+} from '../shared/types'
 import { cielPaths, type CielPaths } from './paths'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import { loadPersona, sampleRateOf, type VoiceSettings } from './persona'
@@ -12,7 +19,7 @@ import { TemplateCache } from './voice/templateCache'
 import { SpeechQueue } from './voice/speechQueue'
 import { SpeechBudget, type SpeechPriority } from './voice/speechBudget'
 import { createAudioSink } from './voice/audioSink'
-import { ASSET_SCHEME, AVATAR_URL, resolveAsset } from './assets'
+import { ASSET_SCHEME, avatarSource, resolveAsset } from './assets'
 import { displayLabel } from './overlay/bounds'
 import { createOverlayWindow, type OverlayHandle } from './overlay/overlayWindow'
 import { createTray, type TrayHandle } from './tray'
@@ -79,22 +86,24 @@ async function start(): Promise<void> {
   let settings: Settings = loadSettings(paths.settings)
 
   let theme: EmblemTheme = DEFAULT_THEME
-  let avatarPath: string | null = null
+  let files: { avatar: string | null; portrait: string | null } = { avatar: null, portrait: null }
+  let avatar: AvatarSource | null = null
   let voice: VoiceSettings | null = null
   try {
     const persona = await loadPersona(personaDir())
     theme = persona.emblem
-    avatarPath = persona.avatarPath
+    files = { avatar: persona.avatarPath, portrait: persona.portrait?.path ?? null }
+    avatar = avatarSource(persona)
     voice = persona.voice
   } catch (e) {
     console.error('persona pack not loaded; using defaults:', (e as Error).message)
   }
 
   protocol.handle(ASSET_SCHEME, async (req) => {
-    const file = resolveAsset(req.url, avatarPath)
-    if (!file) return new Response('Not found', { status: 404 })
-    return new Response(await readFile(file), {
-      headers: { 'content-type': 'model/gltf-binary', 'access-control-allow-origin': '*' }
+    const asset = resolveAsset(req.url, files)
+    if (!asset) return new Response('Not found', { status: 404 })
+    return new Response(await readFile(asset.path), {
+      headers: { 'content-type': asset.contentType, 'access-control-allow-origin': '*' }
     })
   })
 
@@ -106,7 +115,7 @@ async function start(): Promise<void> {
   overlay = createOverlayWindow(theme, {
     displayId: settings.displayId,
     layout: startLayout,
-    avatarUrl: avatarPath ? AVATAR_URL : null
+    avatar
   })
   overlay.onCardAction((cardId) => overlay?.dismissCard(cardId))
 

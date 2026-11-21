@@ -4,6 +4,7 @@ import { is } from '@electron-toolkit/utils'
 import {
   CARD_ACTION_IDS,
   IPC,
+  type AvatarSource,
   type Card,
   type CardAction,
   type EmblemState,
@@ -35,8 +36,8 @@ export interface OverlayHandle {
 export interface OverlayOptions {
   displayId: number | null
   layout: OverlayLayout
-  /** ciel-asset:// URL of the VRM avatar, or null to show the emblem. */
-  avatarUrl: string | null
+  /** The persona's portrait or VRM model, or null to show the emblem. */
+  avatar: AvatarSource | null
 }
 
 export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): OverlayHandle {
@@ -95,11 +96,18 @@ export function createOverlayWindow(theme: EmblemTheme, opts: OverlayOptions): O
     rendererReady = true
     direct(IPC.theme, theme)
     direct(IPC.layout, layout)
-    direct(IPC.avatar, opts.avatarUrl)
+    direct(IPC.avatar, opts.avatar)
     for (const [channel, payload] of view.replay()) direct(channel, payload)
     outbox.ready()
   })
   win.once('ready-to-show', () => win.showInactive())
+  if (is.dev) {
+    // The overlay has no devtools open; surface its warnings and errors in the terminal.
+    win.webContents.on('console-message', (e) => {
+      if (e.level === 'warning' || e.level === 'error') console.log(`[overlay ${e.level}] ${e.message}`)
+    })
+  }
+  win.webContents.on('render-process-gone', (_e, d) => console.error('overlay renderer gone:', d.reason))
 
   ipcMain.on(IPC.setInteractive, (e, on: unknown) => {
     if (e.sender !== win.webContents || typeof on !== 'boolean') return

@@ -1,8 +1,16 @@
 import { useEffect, useState, type JSX } from 'react'
-import { DEFAULT_THEME, type Card, type EmblemState, type EmblemTheme, type OverlayLayout } from '../../shared/types'
+import {
+  DEFAULT_THEME,
+  type AvatarSource,
+  type Card,
+  type EmblemState,
+  type EmblemTheme,
+  type OverlayLayout
+} from '../../shared/types'
 import { Emblem } from './Emblem'
 import { CardStack } from './CardStack'
 import { AvatarView } from './avatar/AvatarView'
+import { PortraitView } from './portrait/PortraitView'
 import { framingFor } from './avatar/avatarLogic'
 import { PcmPlayer } from './pcmPlayer'
 import './overlay.css'
@@ -15,7 +23,7 @@ export function Overlay(): JSX.Element {
   const [state, setState] = useState<EmblemState>('idle')
   const [theme, setTheme] = useState<EmblemTheme>(DEFAULT_THEME)
   const [layout, setLayout] = useState<OverlayLayout>('corner')
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<AvatarSource | null>(null)
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [level, setLevel] = useState(0)
 
@@ -24,9 +32,9 @@ export function Overlay(): JSX.Element {
     const offs = [
       api.onTheme(setTheme),
       api.onLayout(setLayout),
-      api.onAvatar((url) => {
+      api.onAvatar((src) => {
         setAvatarFailed(false)
-        setAvatarUrl(url)
+        setAvatar(src)
       }),
       api.onEmblem(setState),
       api.onCard((c) => setCards((cs) => [...cs.filter((x) => x.id !== c.id), c])),
@@ -59,18 +67,26 @@ export function Overlay(): JSX.Element {
     }
   }, [])
 
+  const fallBack = (e: unknown): void => {
+    console.error('avatar failed to load; showing the emblem', e)
+    setAvatarFailed(true)
+  }
+  const framing = framingFor(state, layout)
   const presence =
-    avatarUrl && !avatarFailed ? (
-      <AvatarView
-        url={avatarUrl}
-        state={state}
-        level={level}
-        framing={framingFor(state, layout)}
-        onError={(e) => {
-          console.error('avatar failed to load; showing the emblem', e)
-          setAvatarFailed(true)
-        }}
-      />
+    avatar && !avatarFailed ? (
+      avatar.kind === 'portrait' ? (
+        <PortraitView
+          url={avatar.url}
+          eyes={avatar.eyes}
+          state={state}
+          level={level}
+          framing={framing}
+          theme={theme}
+          onError={fallBack}
+        />
+      ) : (
+        <AvatarView url={avatar.url} state={state} level={level} framing={framing} onError={fallBack} />
+      )
     ) : (
       <Emblem state={state} level={level} theme={theme} />
     )

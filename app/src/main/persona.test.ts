@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { loadPersona, PersonaError, sampleRateOf } from './persona'
+import { loadPersona, PersonaError, sampleRateOf, DEFAULT_EYES_BOX } from './persona'
 
 const VOICE = {
   voiceId: 'test-voice',
@@ -71,6 +71,40 @@ describe('loadPersona avatar', () => {
 
   it('reports no avatar otherwise', async () => {
     expect((await loadPersona(pack({}))).avatarPath).toBeNull()
+  })
+})
+
+describe('loadPersona portrait', () => {
+  it('finds the portrait picture and its eyes box', async () => {
+    const dir = pack({})
+    fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
+    const eyes = { x: 0.35, y: 0.25, w: 0.3, h: 0.1 }
+    fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes }))
+    expect((await loadPersona(dir)).portrait).toEqual({ path: path.join(dir, 'ciel.png'), eyes })
+  })
+
+  it('accepts a webp or jpg picture and uses a default eyes box without portrait.json', async () => {
+    const dir = pack({})
+    fs.writeFileSync(path.join(dir, 'ciel.webp'), 'webp')
+    const p = await loadPersona(dir)
+    expect(p.portrait).toEqual({ path: path.join(dir, 'ciel.webp'), eyes: DEFAULT_EYES_BOX })
+
+    const jpgDir = pack({})
+    fs.writeFileSync(path.join(jpgDir, 'ciel.jpg'), 'jpg')
+    expect((await loadPersona(jpgDir)).portrait?.path).toBe(path.join(jpgDir, 'ciel.jpg'))
+  })
+
+  it('reports no portrait otherwise', async () => {
+    expect((await loadPersona(pack({}))).portrait).toBeNull()
+  })
+
+  it('rejects an eyes box that runs off the picture', async () => {
+    const dir = pack({})
+    fs.writeFileSync(path.join(dir, 'ciel.png'), 'png')
+    fs.writeFileSync(path.join(dir, 'portrait.json'), JSON.stringify({ eyes: { x: 0.9, y: 0.2, w: 0.3, h: 0.1 } }))
+    const err = await loadPersona(dir).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(PersonaError)
+    expect((err as Error).message).toContain('portrait.json')
   })
 })
 

@@ -284,3 +284,14 @@ The system-stats library, how the emblem is rendered (canvas, or SVG/CSS), the i
 - **Fallback.** With no model, or one that fails to load, the original emblem is shown instead.
 - **Loading.** The renderer loads the model only through `ciel-asset://persona/avatar.vrm`. That's an exact-match allowlist, so nothing else in the persona pack is reachable from the page.
 - **Layout and monitor.** Corner (emblem 200 px, or avatar) or stage (large, centred, dark backdrop) on any connected monitor, picked from the tray and saved in `settings.json`.
+
+## Presence update 2 (2026-11-21, owner decision)
+
+- **2D portrait replaces the VRM route.** The owner supplies their own illustration of her: a pastel, "made of code" anime character. It's saved as `personas/ciel/ciel.png` (`.webp`/`.jpg` also work) in the private pack and is never committed, screenshotted into the repo or sent to an online service. Her colours are the picture's own; the persona's `emblem.json` sets the glow and card accents to match.
+  - **Order of precedence:** portrait picture, then `avatar.vrm`, then the emblem.
+  - **Eyes crop:** `personas/ciel/portrait.json` holds `{ "eyes": { x, y, w, h } }` as fractions of the picture, set by looking at the real file. Without it, a default box in the upper middle is used.
+  - **Full view:** the whole picture, breathing gently. A picture with a background gets soft faded edges; a cut-out (transparent PNG) is drawn as is.
+  - **Idle in the corner:** the crop of her eyes in the glowing pill.
+  - **Effects:** "sometimes a little" glitch, a 0.08–0.28 s burst every 3–10 s, made of sliced bands, a colour split in the accent colours and a few fragments drifting off. Her glow follows the speech level, turns amber while a REQUEST waits, and pulses while she's thinking.
+  - **Blink and talk:** optional `ciel-eyes-closed.png` and `ciel-mouth-open.png`, edits of the same picture. These come later, patched in through explicit eye and mouth boxes, not by comparing images.
+- **Loading.** The renderer fetches the picture only through `ciel-asset://persona/portrait`, on the same exact-match allowlist as the model, and serves it with its own image type.
