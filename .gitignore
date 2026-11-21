@@ -2,7 +2,7 @@ node_modules/
 out/
 dist/
 .venv/
-spikes/
+/spikes/
 .superpowers/
 # personas/ciel is PRIVATE: the GitHub repo is public, so the pack is never committed
 personas/ciel/
