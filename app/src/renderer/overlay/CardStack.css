@@ -1,0 +1,88 @@
+.card-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.card {
+  width: 340px;
+  padding: 10px 14px 12px;
+  border: 1px solid color-mix(in srgb, var(--ring) 70%, transparent);
+  border-radius: 6px;
+  background: rgba(8, 14, 24, 0.82);
+  color: #e6f4ff;
+  font: 14px/1.45 'Segoe UI', system-ui, sans-serif;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--ring) 25%, transparent);
+  animation: card-in 160ms ease-out;
+}
+
+.card--request {
+  border-color: var(--alert);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--alert) 30%, transparent);
+}
+
+.card__tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--ring);
+  margin-bottom: 4px;
+}
+
+.card--request .card__tag {
+  color: var(--alert);
+}
+
+.card__body {
+  margin: 0;
+  max-height: calc(1.45em * 8);
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.card__btn {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--ring) 60%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.card__btn:hover,
+.card__btn:focus-visible {
+  background: color-mix(in srgb, var(--ring) 20%, transparent);
+}
+
+.card__btn--approve {
+  border-color: var(--alert);
+}
+
+.card-stack__more {
+  font: 12px 'Segoe UI', system-ui, sans-serif;
+  color: #9fc4dd;
+  padding-right: 4px;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

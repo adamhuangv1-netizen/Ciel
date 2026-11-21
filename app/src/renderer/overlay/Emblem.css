@@ -1,0 +1,121 @@
+.emblem {
+  width: 96px;
+  height: 96px;
+  --stroke: var(--ring);
+  filter: drop-shadow(0 0 calc(4px + 16px * var(--level)) var(--glow));
+  transition: filter 120ms linear;
+}
+
+.emblem svg {
+  overflow: visible;
+}
+
+.emblem__ring circle {
+  fill: none;
+  stroke: var(--stroke);
+  stroke-width: 3;
+  opacity: 0.75;
+}
+
+.emblem__ring {
+  transform-origin: 0 0;
+  transition: transform 400ms ease;
+}
+
+.emblem__ring--outer {
+  animation: emblem-spin 60s linear infinite;
+}
+
+.emblem__ring--mid {
+  animation: emblem-spin 45s linear infinite reverse;
+}
+
+.emblem__ring--inner circle {
+  stroke-width: 2;
+  opacity: 0.5;
+}
+
+.emblem__facet {
+  fill: color-mix(in srgb, var(--core) 35%, transparent);
+  stroke: var(--core);
+  stroke-width: 2;
+}
+
+.emblem__edge {
+  stroke: var(--core);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.emblem__heart {
+  fill: var(--core);
+}
+
+.emblem__core {
+  transform-origin: 0 0;
+  animation: emblem-breathe 4s ease-in-out infinite;
+}
+
+/* listening: brighter, rings tighten */
+.emblem[data-state='listening'] .emblem__ring {
+  transform: scale(0.92);
+}
+
+.emblem[data-state='listening'] .emblem__ring circle {
+  opacity: 1;
+}
+
+.emblem[data-state='listening'] .emblem__core {
+  animation-duration: 1.6s;
+}
+
+/* thinking: arcs rotate fast */
+.emblem[data-state='thinking'] .emblem__ring--outer {
+  animation-duration: 3s;
+}
+
+.emblem[data-state='thinking'] .emblem__ring--mid {
+  animation-duration: 4s;
+}
+
+/* speaking: the core swells with the audio level */
+.emblem[data-state='speaking'] .emblem__core {
+  animation: none;
+  transform: scale(calc(1 + 0.25 * var(--level)));
+  transition: transform 60ms linear;
+}
+
+/* alert: amber, pulsing, waiting for approval */
+.emblem[data-state='alert'] {
+  --stroke: var(--alert);
+  --glow: var(--alert);
+}
+
+.emblem[data-state='alert'] .emblem__core {
+  animation-duration: 1s;
+}
+
+@keyframes emblem-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes emblem-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emblem__ring,
+  .emblem__core {
+    animation: none !important;
+  }
+}
